@@ -1,12 +1,20 @@
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
 import os
+import json
+from . import handler
 
 def on_connect(client, userdata, flags, rc):
     client.subscribe("msh/+/json/#")
 
-def on_message(client, userdata, msg):
-    print(msg.payload)
+def on_message(_client, _userdata, msg):
+    message = json.loads(msg.payload)
+    print(message)
+    if 'type' not in message: return
+    if 'payload' not in message: return
+    if 'timestamp' not in message: return
+    if 'from' not in message: return
+    handler.process_message(message)
 
 load_dotenv()
 

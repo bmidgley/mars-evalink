@@ -16,7 +16,7 @@ class Station(models.Model):
     short_name = models.CharField(max_length=255)
     configuration = models.JSONField(null=True, blank=True)
     hardware_node = models.CharField(max_length=64, db_index=True, null=False)
-    hardware_number = models.IntegerField(db_index=True)
+    hardware_number = models.BigIntegerField(db_index=True)
     updated_at = models.DateTimeField(null=False, db_index=True)
     station_type = models.CharField(max_length=255)
 
@@ -24,18 +24,20 @@ class PositionLog(models.Model):
     station = models.ForeignKey(Station, on_delete=models.CASCADE, db_index=True)
     latitude = models.FloatField()
     longitude = models.FloatField()
-    altitude = models.FloatField()
-    ground_speed = models.FloatField()
-    ground_track = models.FloatField()
+    altitude = models.FloatField(null=True)
+    ground_speed = models.FloatField(null=True)
+    ground_track = models.FloatField(null=True)
     updated_at = models.DateTimeField(null=False, db_index=True)
 
 class TelemetryLog(models.Model):
     station = models.ForeignKey(Station, on_delete=models.CASCADE, db_index=True)
     position_log = models.ForeignKey(PositionLog, on_delete=models.SET_NULL, null=True, db_index=True)
-    temperature = models.FloatField()
-    humidity = models.FloatField()
-    current = models.FloatField()
-    voltage = models.FloatField()
+    temperature = models.FloatField(null=True)
+    humidity = models.FloatField(null=True)
+    barometric_pressure = models.FloatField(null=True)
+    current = models.FloatField(null=True)
+    voltage = models.FloatField(null=True)
+    battery_level = models.FloatField(null=True)
     updated_at = models.DateTimeField(null=False, db_index=True)
 
 class TextLog(models.Model):
