@@ -9,7 +9,6 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(_client, _userdata, msg):
     message = json.loads(msg.payload)
-    print(message)
     if 'type' not in message: return
     if 'payload' not in message: return
     if 'timestamp' not in message: return
