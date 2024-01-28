@@ -13,6 +13,6 @@ load_dotenv()
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
-# client.tls_set()
+if os.getenv('MQTT_TLS'): client.tls_set()
 client.username_pw_set(username=os.getenv('MQTT_USER'), password=os.getenv('MQTT_PASSWORD'))
 client.connect(os.getenv('MQTT_SERVER'), int(os.getenv('MQTT_PORT')), 60)
