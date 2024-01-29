@@ -10,5 +10,5 @@ def features(request):
     }
     past = date.today() - timedelta(days = 2)
     for station in Station.objects.filter(updated_at__gt = past).all():
-        data["features"].append(station.features)
+        if station.features: data["features"].append(station.features)
     return JsonResponse(data, json_dumps_params={'indent': 2})
