@@ -4,7 +4,7 @@ import os
 import json
 from . import handler
 
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, _userdata, _flags, _rc):
     client.subscribe("msh/+/json/#")
 
 def on_message(_client, _userdata, msg):
