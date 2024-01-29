@@ -32,13 +32,22 @@ def process_message(message):
 
     if station == None: return
     if station.features == None: station.features = {
-        "type": "feature",
+        "type": "Feature",
         "properties": {
             "name": station.name,
             "label": station.name,
             "time": iso_time(message['timestamp']),
-            "hardware": station.hardware,
-            "node_type": station.station_type
+            "hardware": station.hardware.hardware_type,
+            "node_type": station.station_type,
+            "altitude": None,
+            "ground_speed": None,
+            "ground_track": None,
+            "temperature": None,
+            "relative_humidity": None,
+            "barometric_pressure": None,
+            "battery_level": None,
+            "voltage": None,
+            "current": None,
         },
         "geometry": { "type": "Point" },
         "id": str(station.id)
@@ -47,13 +56,15 @@ def process_message(message):
     if message['type'] == 'position':
         lat = payload['latitude_i'] / 10000000
         lon = payload['longitude_i']  / 10000000
+        ground_track = payload.get('ground_track')
+        if ground_track: ground_track = ground_track / 100000
         position_log = PositionLog(
             station=station,
             latitude=lat,
             longitude=lon,
             altitude=payload.get('altitude'),
             ground_speed=payload.get('ground_speed'),
-            ground_track=payload.get('ground_track'),
+            ground_track=ground_track,
             updated_at=time)
         position_log.save()
         station.features["geometry"]["coordinates"] = [lat, lon]
@@ -74,12 +85,12 @@ def process_message(message):
             current=payload.get('current'),
             updated_at=time)
         telemetry_log.save()
-        station.features["properties"]["temperature"] = position_log.temperature or station.features["properties"]["temperature"]
-        station.features["properties"]["relative_humidity"] = position_log.relative_humidity or station.features["properties"]["relative_humidity"]
-        station.features["properties"]["barometric_pressure"] = position_log.barometric_pressure or station.features["properties"]["barometric_pressure"]
-        station.features["properties"]["battery_level"] = position_log.battery_level or station.features["properties"]["battery_level"]
-        station.features["properties"]["voltage"] = position_log.voltage or station.features["properties"]["voltage"]
-        station.features["properties"]["current"] = position_log.current or station.features["properties"]["current"]
+        station.features["properties"]["temperature"] = telemetry_log.temperature or station.features["properties"]["temperature"]
+        station.features["properties"]["relative_humidity"] = telemetry_log.relative_humidity or station.features["properties"]["relative_humidity"]
+        station.features["properties"]["barometric_pressure"] = telemetry_log.barometric_pressure or station.features["properties"]["barometric_pressure"]
+        station.features["properties"]["battery_level"] = telemetry_log.battery_level or station.features["properties"]["battery_level"]
+        station.features["properties"]["voltage"] = telemetry_log.voltage or station.features["properties"]["voltage"]
+        station.features["properties"]["current"] = telemetry_log.current or station.features["properties"]["current"]
         station.save()
         return
 
