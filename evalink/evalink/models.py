@@ -5,12 +5,23 @@ from django.utils import timezone
 from django.contrib.postgres.fields import ArrayField
 from django.db.models.query import QuerySet
 
+class StationProfile(models.Model):
+    name = models.CharField(max_length=255, db_index=True)
+    configuration = models.JSONField()
+    compatible_firmwares = ArrayField(
+        models.CharField(null=False, max_length=100),
+        null=False,
+        default=list,
+    )
+
 class Hardware(models.Model):
     name = models.CharField(max_length=255, db_index=True)
     hardware_type = models.IntegerField()
     station_type = models.CharField(max_length=255)
 
 class Station(models.Model):
+    station_profile = models.ForeignKey(StationProfile, on_delete=models.SET_NULL, null=True, db_index=True)
+    firmware = models.CharField(null=True, max_length=100)
     hardware = models.ForeignKey(Hardware, on_delete=models.SET_NULL, null=True, db_index=True)
     name = models.CharField(max_length=255, db_index=True)
     short_name = models.CharField(max_length=255)
