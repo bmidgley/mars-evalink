@@ -31,7 +31,11 @@ def process_message(message):
                 station_type=hardware.station_type,
                 short_name=payload['shortname'])
             station.updated_at = time
-            station.save()
+            try:
+                station.save()
+            except django.db.utils.IntegrityError as e:
+                print(e)
+                return
             print(f'adding station {station} at {time} because there was nothing with number {number}')
         station.updated_at = time
         station.name = payload['longname']
@@ -115,7 +119,7 @@ def process_message(message):
 def log_measurements(station, features, time):
     measure = StationMeasure(station=station, features=features, updated_at=time)
     measure.save()
-    print(f'logging: {measure} {features} on {station}')
+    # print(f'logging: {measure} {features} on {station}')
 
 def iso_time(seconds):
     tm = datetime.fromtimestamp(seconds)
