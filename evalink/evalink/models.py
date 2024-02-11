@@ -28,7 +28,7 @@ class Station(models.Model):
     configuration = models.JSONField(null=True, blank=True)
     features = models.JSONField(null=True, blank=True)
     hardware_node = models.CharField(max_length=64, db_index=True, null=False)
-    hardware_number = models.BigIntegerField(db_index=True)
+    hardware_number = models.BigIntegerField(db_index=True, unique=True)
     updated_at = models.DateTimeField(null=False, db_index=True)
     station_type = models.CharField(max_length=255)
 
