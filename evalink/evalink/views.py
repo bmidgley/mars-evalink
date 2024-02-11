@@ -1,8 +1,10 @@
 from django.http import JsonResponse, HttpResponse
+from django.contrib.auth.decorators import login_required
 from evalink.models import *
 from datetime import date
 from datetime import timedelta
 
+@login_required
 def features(request):
     data = {
         "type": "FeatureCollection",

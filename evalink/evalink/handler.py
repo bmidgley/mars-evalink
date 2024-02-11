@@ -15,16 +15,24 @@ def process_message(message):
 
     if message['type'] == 'nodeinfo':
         if station == None:
+            station_profile = StationProfile.objects.first()
+            if station_profile == None:
+                station_profile = StationProfile(name="default", configuration={"firmware": "2.2.17"}, compatible_firmwares=["2.2.17"])
+                station_profile.save()
             hardware = Hardware.objects.filter(hardware_type=payload['hardware']).first()
             if hardware == None:
                 hardware = Hardware(hardware_type=payload['hardware'], name='tbeam', station_type='infrastructure')
                 hardware.save()
             station = Station(
                 hardware=hardware,
+                station_profile=station_profile,
                 hardware_number=number,
                 hardware_node=payload['id'],
                 station_type=hardware.station_type,
                 short_name=payload['shortname'])
+            station.updated_at = time
+            station.save()
+            print(f'adding station {station} at {time} because there was nothing with number {number}')
         station.updated_at = time
         station.name = payload['longname']
         station.save()
@@ -105,8 +113,9 @@ def process_message(message):
         return
 
 def log_measurements(station, features, time):
-    measure = StationMeasure(station=station, features=features, updated_at=time).save()
-    print(f'logging: {measure}')
+    measure = StationMeasure(station=station, features=features, updated_at=time)
+    measure.save()
+    print(f'logging: {measure} {features} on {station}')
 
 def iso_time(seconds):
     tm = datetime.fromtimestamp(seconds)
