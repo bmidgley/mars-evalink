@@ -32,6 +32,11 @@ class Station(models.Model):
     updated_at = models.DateTimeField(null=False, db_index=True)
     station_type = models.CharField(max_length=255)
 
+class StationMeasure(models.Model):
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, null=False, db_index=True)
+    features = models.JSONField(null=False, blank=False)
+    updated_at = models.DateTimeField(null=False, db_index=True)
+
 class PositionLog(models.Model):
     station = models.ForeignKey(Station, on_delete=models.CASCADE, db_index=True)
     latitude = models.FloatField()
