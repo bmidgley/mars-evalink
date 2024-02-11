@@ -16,6 +16,8 @@ class TextLogAdmin(admin.ModelAdmin):
     list_display = [f.name for f in TextLog._meta.fields]
 class NeighborLogAdmin(admin.ModelAdmin):
     list_display = [f.name for f in NeighborLog._meta.fields]
+class StationMeasureAdmin(admin.ModelAdmin):
+    list_display = [f.name for f in StationMeasure._meta.fields]
 
 admin.site.register(Hardware, HardwareAdmin)
 admin.site.register(Station, StationAdmin)
@@ -24,3 +26,4 @@ admin.site.register(PositionLog, PositionLogAdmin)
 admin.site.register(TelemetryLog, TelemetryLogAdmin)
 admin.site.register(TextLog, TextLogAdmin)
 admin.site.register(NeighborLog, NeighborLogAdmin)
+admin.site.register(StationMeasure, StationMeasureAdmin)

@@ -72,6 +72,7 @@ def process_message(message):
         station.features["properties"]["ground_speed"] = position_log.ground_speed or station.features["properties"]["ground_speed"]
         station.features["properties"]["ground_track"] = position_log.ground_track or station.features["properties"]["ground_track"]
         station.save()
+        log_measurements(station, station.features, time)
         return
 
     if message['type'] == 'telemetry':
@@ -92,6 +93,7 @@ def process_message(message):
         station.features["properties"]["voltage"] = telemetry_log.voltage or station.features["properties"]["voltage"]
         station.features["properties"]["current"] = telemetry_log.current or station.features["properties"]["current"]
         station.save()
+        log_measurements(station, station.features, time)
         return
 
     if message['type'] == 'text':
@@ -101,6 +103,10 @@ def process_message(message):
             updated_at=time)
         text_log.save()
         return
+
+def log_measurements(station, features, time):
+    measure = StationMeasure(station=station, features=features, updated_at=time).save()
+    print(f'logging: {measure}')
 
 def iso_time(seconds):
     tm = datetime.fromtimestamp(seconds)

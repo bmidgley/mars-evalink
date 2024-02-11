@@ -8,7 +8,7 @@ def features(request):
         "type": "FeatureCollection",
         "features": [],
     }
-    past = date.today() - timedelta(days = 2)
+    past = date.today() - timedelta(days = 20)
     for station in Station.objects.filter(updated_at__gt = past).order_by('id').all():
         if station.features and 'geometry' in station.features and 'coordinates' in station.features['geometry']:
             data["features"].append(station.features)
