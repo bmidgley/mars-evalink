@@ -63,6 +63,7 @@ def process_message(message):
             "battery_level": None,
             "voltage": None,
             "current": None,
+            "texts": [],
         },
         "geometry": { "type": "Point" },
         "id": str(station.id)
@@ -117,6 +118,13 @@ def process_message(message):
             text=payload.get('text'),
             updated_at=time)
         text_log.save()
+        if "text" not in station.features["properties"]: station.features["properties"]["texts"] = [] # remove
+        station.features["properties"]["texts"].append({
+            "text": text_log.text,
+            "coordinates": station.features["geometry"].get("coordinates"),
+            "updated_at": iso_time(message['timestamp']) })
+        station.save()
+        log_measurements(station, station.features, time)
         return
 
 def log_measurements(station, features, time):
