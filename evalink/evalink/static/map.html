@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenLayers GeoJSON Web Map</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
+    <!-- Include OpenLayers library -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.1.0/ol.css" type="text/css">
+    <script src="https://cdn.jsdelivr.net/npm/ol@7.1.0/dist/ol.js"></script>
+    <style>
+        #map {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+        }
+
+        .popup {
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            background-color: white;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        #marker-list {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .marker-item {
+            margin-bottom: 5px;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        #time-slider-container {
+            position: absolute;
+            bottom: 60px;
+            right: 10px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+        }
+
+        #emergency-device-panel {
+            position: fixed;
+            bottom: 40px;
+            left: 10px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        #emergency-device-panel h3 {
+            margin-top: 0;
+            font-size: 16px;
+            color: #333;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        #emergency-device-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #emergency-device-list li {
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #555;
+            font-family: 'Roboto', sans-serif;
+            animation: blink 1.5s infinite;
+            cursor: pointer;
+        }
+
+        #emergency-device-list li a {
+            text-decoration: none;
+        }
+
+        @keyframes blink {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map">
+        <a href="https://www.maptiler.com" style="position:absolute;left:10px;bottom:10px;z-index:999;"><img
+                src="https://api.maptiler.com/resources/logo.svg" alt="MapTiler logo"></a>
+    </div>
+
+    <div id="marker-list"></div>
+
+
+    <div id="time-slider-container">
+        <h3 id="nameTimeSlider"></h3>
+        <input type="text" id="tag-input" placeholder="Add tags...">
+        <input type="button" value="Add Tag" onclick="addTag()">
+        <br>
+        <input type="range" id="time-slider" min="0" max="1" step="0.1" value="0">
+        <div id="selected-time"></div>
+        <button id="emergency-button" title="Emergency Signal" onclick="sendEmergencySignal()">
+            <img id="emergency-icon" src="https://img.icons8.com/ios-filled/50/000000/siren.png" height="30"
+                width="30" />
+        </button>
+        <button id="download-button" title="Download JSON For Selected Only">
+            <img src="https://img.icons8.com/material-outlined/24/000000/download.png" height="30" width="30" />
+        </button>
+    </div>
+
+    <div id="emergency-device-panel" class="hidden">
+        <h3>Emergency Device List</h3>
+        <ul id="emergency-device-list"></ul>
+    </div>
+
+    <script>
+        const geojsonUrl =
+            '/features.json';
+        const key = 'VfcvzosbIEMkLMsjWMpz';
+
+        const attribution = new ol.control.Attribution({
+            collapsible: false,
+        });
+
+        const source = new ol.source.TileJSON({
+            url: `https://api.maptiler.com/maps/topo/tiles.json?key=${key}`, // source URL
+            tileSize: 512,
+            crossOrigin: 'anonymous',
+        });
+
+        let markerData = {};
+        let timeSliderVisible = false;
+
+        function updateGeoJSON() {
+            fetch(geojsonUrl)
+                .then(response => response.json())
+                .then(data => {
+                    vectorSource.clear();
+
+                    const features = vectorSource.getFormat().readFeatures(data, {
+                        featureProjection: map.getView().getProjection(),
+                    });
+                    vectorSource.addFeatures(features);
+
+                    // markerData = {};
+
+                    features.forEach(feature => {
+                        const name = feature.get('name');
+                        const time = feature.get('time');
+                        const coordinates = feature.getGeometry().getCoordinates();
+
+                        if (name && time) {
+                            if (!markerData[name]) {
+                                markerData[name] = {
+                                    times: [],
+                                    coordinates: [],
+                                };
+                            }
+
+                            // Check if the time is not already present, then add it
+                            if (!markerData[name].times.includes(time)) {
+                                markerData[name].times.push(time);
+                                markerData[name].coordinates.push(coordinates);
+                            }
+                        }
+                    });
+
+                    updateMarkerList();
+                    if (timeSliderVisible) {
+                        updateSlider();
+                    }
+                })
+                .catch(error => console.error('Error loading GeoJSON:', error));
+        }
+
+        function updateMarkerList() {
+            const markerList = document.getElementById('marker-list');
+            markerList.innerHTML = '';
+
+            Object.keys(markerData).forEach(name => {
+                const markerItem = document.createElement('div');
+                markerItem.className = 'marker-item';
+                markerItem.textContent = name;
+                markerItem.addEventListener('click', function () {
+                    zoomToMarker(name);
+                    showTimeSlider(name);
+                });
+                markerList.appendChild(markerItem);
+            });
+            const downloadJsonButton = document.createElement('button');
+            downloadJsonButton.id = 'download-json-button';
+            downloadJsonButton.title = 'Download All JSON Data';
+            downloadJsonButton.innerHTML = '<img src="https://img.icons8.com/material-outlined/24/000000/download.png"/>';
+            downloadJsonButton.addEventListener('click', function () {
+                downloadAllData();
+            });
+
+            markerList.appendChild(downloadJsonButton);
+        }
+
+        // function zoomToMarker(name) {
+        //     const feature = vectorSource.getFeatures().find(feature => feature.get('name') === name);
+        //     if (feature) {
+        //         const coordinates = feature.getGeometry().getCoordinates();
+        //         map.getView().animate({
+        //             center: coordinates,
+        //             zoom: 19,
+        //             duration: 1000,
+        //         });
+        //     }
+        // }
+
+        function showTimeSlider(name) {
+            const times = markerData[name].times;
+            const coordinates = markerData[name].coordinates;
+            const timeSliderContainer = document.getElementById('time-slider-container');
+            const timeSlider = document.getElementById('time-slider');
+            const selectedTime = document.getElementById('selected-time');
+            document.getElementById('nameTimeSlider').innerHTML = name;
+
+            const emergencyIcon = document.getElementById('emergency-icon');
+            if (emergencyList.includes(name)) {
+                emergencyIcon.src = 'https://img.icons8.com/ios-filled/50/FF0000/siren.png';
+            } else {
+                emergencyIcon.src = 'https://img.icons8.com/ios-filled/50/000000/siren.png';
+            }
+
+            // Enable or disable the slider based on the length of times array
+            timeSlider.disabled = times.length <= 1;
+
+            timeSlider.setAttribute('max', times.length - 1);
+            timeSlider.value = 0;
+
+            timeSlider.oninput = function () {
+                const index = parseInt(timeSlider.value, 10);
+                const selected = times[index];
+                selectedTime.textContent = `Time: ${selected}`;
+
+                // Move the marker to the selected coordinates
+                moveMarkerToCoordinates(coordinates[index]);
+            };
+
+            timeSlider.onchange = function () {
+                const index = parseInt(timeSlider.value, 10);
+                const selected = times[index];
+                selectedTime.textContent = `Time: ${selected}`;
+
+                // Draw a temporary marker at the selected coordinates
+                drawTemporaryMarker(coordinates[index]);
+            };
+
+            const index = parseInt(timeSlider.value, 10);
+            const selected = times[index];
+            selectedTime.textContent = `Time: ${selected}`;
+
+            timeSliderContainer.style.display = 'block';
+        }
+
+        function drawTemporaryMarker(coordinates) {
+            const temporaryMarker = new ol.Feature({
+                geometry: new ol.geom.Point(coordinates),
+            });
+
+            temporaryMarker.setStyle(new ol.style.Style({
+                image: new ol.style.Icon({
+                    src: '/location_icon.svg.png',
+                    size: [512, 512],
+                    scale: 0.04,
+                    opacity: 1,
+                }),
+            }));
+
+            vectorSource.addFeature(temporaryMarker);
+        }
+
+        function moveMarkerToCoordinates(coordinates) {
+            vectorSource.getFeatures().forEach(feature => {
+                const name = feature.get('name');
+                if (name) {
+                    if (name in markerData && markerData[name].coordinates.length > 0) {
+                        feature.getGeometry().setCoordinates(coordinates);
+                    }
+                }
+            });
+        }
+
+        function updateSlider() {
+            const timeSlider = document.getElementById('time-slider');
+            const times = Object.values(markerData).reduce((acc, data) => [...acc, ...data.times], []);
+            timeSlider.setAttribute('max', times.length - 1);
+        }
+
+        const vectorSource = new ol.source.Vector({
+            format: new ol.format.GeoJSON(),
+            strategy: ol.loadingstrategy.bbox,
+        });
+
+        const vectorLayer = new ol.layer.Vector({
+            source: vectorSource,
+            style: new ol.style.Style({
+                image: new ol.style.Icon({
+                     src: 'location_icon.svg.png',
+                    //src: 'https://docs.maptiler.com/openlayers/geojson-points/icon-plane-512.png',
+                    size: [512, 512],
+                    scale: 0.03,
+                }),
+            }),
+        });
+
+        const map = new ol.Map({
+            target: 'map',
+            controls: ol.control.defaults.defaults({
+                attribution: false,
+            }).extend([attribution]),
+            layers: [
+                new ol.layer.Tile({
+                    source: source,
+                }),
+                vectorLayer,
+            ],
+            view: new ol.View({
+                center: ol.proj.fromLonLat([-110.7919148, 38.4065268]),
+                zoom: 16,
+            }),
+        });
+
+        const overlay = new ol.Overlay({
+            element: document.createElement('div'),
+            positioning: 'bottom-center',
+            stopEvent: false,
+            offset: [0, -10],
+        });
+        map.addOverlay(overlay);
+
+        map.on('click', function (event) {
+            const feature = map.forEachFeatureAtPixel(event.pixel, function (feature) {
+                return feature;
+            });
+
+            if (feature) {
+                const coordinates = feature.getGeometry().getCoordinates();
+                const content = `<div class="popup">
+                                    <span><b>Name: </b>${feature.values_.name}</span></br>
+                                    <span><b>Label: </b>${feature.values_.label}</span></br>
+                                    <span><b>Time: </b>${feature.values_.time}</span></br>
+                                    <span><b>Hardware: </b>${feature.values_.hardware}</span></br>
+                                    <span><b>Node Type: </b>${feature.values_.node_type}</span>
+                                </div>`;
+
+                overlay.getElement().innerHTML = content;
+                overlay.setPosition(coordinates);
+            } else {
+                overlay.setPosition(undefined);
+            }
+        });
+
+        map.on('pointermove', function (e) {
+            if (e.dragging) {
+                overlay.setPosition(undefined);
+                return;
+            }
+            const pixel = map.getEventPixel(e.originalEvent);
+            const hit = map.hasFeatureAtPixel(pixel);
+            map.getTargetElement().style.cursor = hit ? 'pointer' : '';
+        });
+
+        setInterval(updateGeoJSON, 9000);
+
+        updateGeoJSON();
+
+        function downloadSelected() {
+            const name = document.getElementById('nameTimeSlider').innerHTML;
+            const data = markerData[name];
+
+            if (data) {
+                const jsonData = {
+                    name: name,
+                    times: data.times,
+                    coordinates: data.coordinates.map(coord => ol.proj.toLonLat(coord))
+                };
+
+                const jsonContent = JSON.stringify(jsonData);
+
+                const blob = new Blob([jsonContent], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${name}_data.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        function downloadAllData() {
+            let allData = [];
+
+            Object.keys(markerData).forEach(name => {
+                const jsonData = {
+                    name: name,
+                    times: markerData[name].times,
+                    coordinates: markerData[name].coordinates.map(coord => ol.proj.toLonLat(coord))
+                };
+
+                allData.push(jsonData);
+            });
+
+            const jsonContent = JSON.stringify(allData);
+
+            const blob = new Blob([jsonContent], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'all_data.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function addTag() {
+            const name = document.getElementById('nameTimeSlider').innerHTML;
+            const tagInput = document.getElementById('tag-input');
+            const tag = tagInput.value.trim();
+
+            if (name && tag) {
+                // Do something with the tag, e.g., store it, display it, etc.
+                console.log(`Tag "${tag}" added to device "${name}"`);
+                // Clear the input field after adding the tag
+                tagInput.value = '';
+            }
+        }
+
+
+        let emergencyList = [];
+        function sendEmergencySignal() {
+            const name = document.getElementById('nameTimeSlider').innerHTML;
+
+            if (name && !emergencyList.includes(name)) {
+                const emergencyIcon = document.getElementById('emergency-icon');
+                emergencyIcon.src = 'https://img.icons8.com/ios-filled/50/FF0000/siren.png';
+                // Add the device to the emergency list
+                addToEmergencyList(name);
+                // Perform actions related to sending an emergency signal
+                console.log(`Emergency signal sent for device "${name}"`);
+            }
+        }
+
+
+
+        function addToEmergencyList(deviceName) {
+            const emergencyListPanel = document.getElementById('emergency-device-list');
+
+            console.log(emergencyList);
+            if (!emergencyList.includes(deviceName)) {
+                emergencyList.push(deviceName);
+                const listItem = document.createElement('li');
+
+                const emergencyButton = document.createElement('a');
+                emergencyButton.innerHTML = deviceName + ' ';
+                emergencyButton.href = '#';
+                emergencyButton.onclick = function () {
+                    zoomToMarker(deviceName);
+                };
+                listItem.appendChild(emergencyButton);
+
+                // Create a remove button (X)
+                const removeButton = document.createElement('a');
+                removeButton.innerHTML = '(&times;)'; // Unicode for '×' (multiplication sign)
+                removeButton.href = '#';
+                removeButton.title = 'Remove From Emergency';
+                removeButton.onclick = function () {
+                    removeDeviceFromEmergencyList(deviceName, listItem);
+                };
+
+                // Append the remove button to the list item
+                listItem.appendChild(removeButton);
+
+                emergencyListPanel.appendChild(listItem);
+
+                // Show the emergency device panel
+                showEmergencyPanel();
+            }
+        }
+
+        function zoomToMarker(deviceName) {
+            const feature = vectorSource.getFeatures().find(feature => feature.get('name') === deviceName);
+            if (feature) {
+                const coordinates = feature.getGeometry().getCoordinates();
+                map.getView().animate({
+                    center: coordinates,
+                    zoom: 22,
+                    duration: 1000,
+                });
+            }
+        }
+
+        function removeDeviceFromEmergencyList(deviceName, listItem) {
+            const emergencyListPanel = document.getElementById('emergency-device-list');
+            const index = emergencyList.indexOf(deviceName);
+
+            if (index !== -1) {
+                emergencyList.splice(index, 1);
+            }
+            emergencyListPanel.removeChild(listItem);
+
+            if (emergencyList.length === 0) {
+                hideEmergencyPanel();
+            }
+
+            const emergencyIcon = document.getElementById('emergency-icon');
+            emergencyIcon.src = 'https://img.icons8.com/ios-filled/50/000000/siren.png';
+        }
+
+
+        function hideEmergencyPanel() {
+            const emergencyPanel = document.getElementById('emergency-device-panel');
+            emergencyPanel.classList.add('hidden');
+        }
+
+        function showEmergencyPanel() {
+            const emergencyPanel = document.getElementById('emergency-device-panel');
+            emergencyPanel.classList.remove('hidden');
+        }
+
+        document.getElementById('download-button').addEventListener('click', downloadSelected);
+
+
+    </script>
+</body>
+
+</html>

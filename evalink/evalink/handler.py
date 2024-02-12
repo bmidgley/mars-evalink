@@ -22,7 +22,10 @@ def process_message(message):
             hardware = Hardware.objects.filter(hardware_type=payload['hardware']).first()
             if hardware == None:
                 hardware = Hardware(hardware_type=payload['hardware'], name='tbeam', station_type='infrastructure')
-                hardware.save()
+                try:
+                    hardware.save()
+                except django.db.utils.IntegrityError as e:
+                    return
             station = Station(
                 hardware=hardware,
                 station_profile=station_profile,
