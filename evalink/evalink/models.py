@@ -62,6 +62,7 @@ class TextLog(models.Model):
     position_log = models.ForeignKey(PositionLog, on_delete=models.SET_NULL, null=True, db_index=True)
     destination = models.ForeignKey(Station, related_name='destination', on_delete=models.SET_NULL, db_index=True, null=True)
     text = models.TextField(db_index=True)
+    serial_number = models.BigIntegerField(db_index=True, unique=True)
     updated_at = models.DateTimeField(null=False, db_index=True)
 
 class NeighborLog(models.Model):

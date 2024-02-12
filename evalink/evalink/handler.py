@@ -115,6 +115,7 @@ def process_message(message):
     if message['type'] == 'text':
         text_log = TextLog(
             station=station,
+            serial_number=message.get("id"),
             text=payload.get('text'),
             updated_at=time)
         text_log.save()
