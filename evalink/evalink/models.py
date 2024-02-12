@@ -21,6 +21,7 @@ class Hardware(models.Model):
 
 class Station(models.Model):
     station_profile = models.ForeignKey(StationProfile, on_delete=models.SET_NULL, null=True, db_index=True)
+    last_position = models.ForeignKey("PositionLog", related_name='last_position', on_delete=models.SET_NULL, null=True, db_index=True)
     firmware = models.CharField(null=True, max_length=100)
     hardware = models.ForeignKey(Hardware, on_delete=models.SET_NULL, null=True, db_index=True)
     name = models.CharField(max_length=255, db_index=True)
