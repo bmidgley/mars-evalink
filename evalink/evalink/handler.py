@@ -9,6 +9,7 @@ def process_message(message):
     number = message['from']
     payload = message['payload']
     tz = pytz.timezone("US/Mountain")
+    timezone.now()
     time = datetime.fromtimestamp(message['timestamp'], tz)
 
     station = Station.objects.filter(hardware_number=number).first()
@@ -87,6 +88,7 @@ def process_message(message):
         station.features["properties"]["altitude"] = position_log.altitude or station.features["properties"]["altitude"]
         station.features["properties"]["ground_speed"] = position_log.ground_speed or station.features["properties"]["ground_speed"]
         station.features["properties"]["ground_track"] = position_log.ground_track or station.features["properties"]["ground_track"]
+        station.last_position = position_log
         station.save()
         log_measurements(station, station.features, time)
         return
@@ -94,6 +96,7 @@ def process_message(message):
     if message['type'] == 'telemetry':
         telemetry_log = TelemetryLog(
             station=station,
+            position_log=station.last_position,
             temperature=payload.get('temperature'),
             relative_humidity=payload.get('relative_humidity'),
             barometric_pressure=payload.get('barometric_pressure'),
@@ -115,6 +118,7 @@ def process_message(message):
     if message['type'] == 'text':
         text_log = TextLog(
             station=station,
+            position_log=station.last_position,
             serial_number=message.get("id"),
             text=payload.get('text'),
             updated_at=time)

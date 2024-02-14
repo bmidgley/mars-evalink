@@ -1,0 +1,7 @@
+<!-- templates/messages/chat.html -->
+<h2>Chat</h2>
+<form action="/chat/" method="post">
+  {% csrf_token %}
+  {{ form }}
+  <button type="submit" value="Submit">Send</button>
+</form>
