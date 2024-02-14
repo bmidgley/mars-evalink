@@ -23,7 +23,8 @@ def chat(request):
     if request.method == "POST":
         form = ChatForm(request.POST)
         if form.is_valid():
-            print(form)#.cleaned_data)
+            message = form.cleaned_data['message']
+            print(message)
 
     form = ChatForm()
     return render(request, "chat.html", {"form": form})
