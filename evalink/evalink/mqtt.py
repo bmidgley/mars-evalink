@@ -20,7 +20,6 @@ def on_message(_client, _userdata, msg):
     handler.process_message(message)
 
 def verify(message, field):
-    if field not in message: print(f'reject {message} for missing {field}')
     return field in message
 
 load_dotenv()
