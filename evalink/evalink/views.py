@@ -28,7 +28,8 @@ def chat(request):
     if request.method == "POST":
         form = ChatForm(request.POST)
         if form.is_valid():
-            message = form.cleaned_data['message']
+            message = request.user.username + ': '
+            message += form.cleaned_data['message']
             number = int(os.getenv('MQTT_NODE_NUMBER'))
             send_message = {'channel': 0, 'from': number, 'payload': message, 'type': 'sendtext'}
             tls = None #os.getenv('MQTT_TLS')
