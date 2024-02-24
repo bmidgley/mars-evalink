@@ -30,13 +30,13 @@ def chat(request):
         if form.is_valid():
             message = form.cleaned_data['message']
             user = request.user
-            number = 1000000000 + user.id
+            number = int(os.getenv('MQTT_NODE_NUMBER'))
             hexid = '!' + hex(number)[2:10]
             email = user.email
             timestamp = int(datetime.timestamp(datetime.now()))
             node_message = {'channel': 0, 'from': number, 'id': timestamp + 1, 'payload': {'hardware': 777, 'id': hexid, 'longname': email, 'shortname': email[0:3]}, 'sender': hexid, 'timestamp': timestamp, 'to': number, 'type': 'nodeinfo'}
             text_message = {'channel': 0, 'from': number, 'id': timestamp + 2, 'payload': {'text': message}, 'sender': hexid, 'timestamp': timestamp, 'to': number, 'type': 'text'}
-            send_message = {'channel': 0, 'from': 2751158468, 'payload': message, 'type': 'sendtext'}
+            send_message = {'channel': 0, 'from': number, 'payload': message, 'type': 'sendtext'}
             broadcast(node_message, f"LongFast/{hexid}")
             broadcast(text_message, f"LongFast/{hexid}")
             broadcast(send_message, "mqtt")
