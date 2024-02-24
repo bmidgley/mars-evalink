@@ -15,6 +15,7 @@ def process_message(message):
     station = Station.objects.filter(hardware_number=number).first()
 
     if message['type'] == 'nodeinfo':
+        print(message)
         if station == None:
             station_profile = StationProfile.objects.first()
             if station_profile == None:

@@ -72,3 +72,55 @@ class NeighborLog(models.Model):
     position_log = models.ForeignKey(PositionLog, on_delete=models.SET_NULL, null=True, db_index=True)
     rssi = models.FloatField()
     updated_at = models.DateTimeField(null=False, db_index=True)
+
+class Campus(models.Model):
+    name = models.CharField(max_length=64, db_index=True, null=False)
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    altitude = models.FloatField(null=True)
+    mailing_address = models.TextField(null=True)
+    updated_at = models.DateTimeField(null=False, db_index=True)
+
+class Vehicle(models.Model):
+    name = models.CharField(max_length=64, db_index=True, null=False)
+    campus = models.ForeignKey(Campus, on_delete=models.CASCADE, db_index=True)
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, db_index=True)
+
+class Crew(models.Model):
+    campus = models.ForeignKey(Campus, on_delete=models.CASCADE, db_index=True)
+    name = models.CharField(max_length=64, db_index=True, null=False)
+    start_date = models.DateField(null=False)
+    end_date = models.DateField(null=False)
+    updated_at = models.DateTimeField(null=False, db_index=True)
+
+class Crewmember(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
+    crew = models.ForeignKey(Crew, on_delete=models.CASCADE, db_index=True)
+    role = models.CharField(max_length=64, db_index=True, null=False)
+    updated_at = models.DateTimeField(null=False, db_index=True)
+
+class CrewmemberVitals(models.Model):
+    crewmember = models.ForeignKey(Crewmember, on_delete=models.CASCADE, db_index=True)
+    vitals = models.JSONField(null=False, blank=False)
+    updated_at = models.DateTimeField(null=False, db_index=True)
+
+class Eva(models.Model):
+    name = models.CharField(max_length=64, db_index=True, null=False)
+    crew = models.ForeignKey(Crew, on_delete=models.CASCADE, db_index=True)
+    start_at = models.DateTimeField(null=False, db_index=True)
+    end_at = models.DateTimeField(null=False, db_index=True)
+    updated_at = models.DateTimeField(null=False, db_index=True)
+
+class EvaCrewmember(models.Model):
+    eva = models.ForeignKey(Eva, on_delete=models.CASCADE, db_index=True)
+    crewmember = models.ForeignKey(Crewmember, on_delete=models.CASCADE, db_index=True)
+
+class EvaVehicle(models.Model):
+    eva = models.ForeignKey(Eva, on_delete=models.CASCADE, db_index=True)
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, db_index=True)
+
+class EvaStation(models.Model):
+    eva = models.ForeignKey(Eva, on_delete=models.CASCADE, db_index=True)
+    station = models.ForeignKey(Station, on_delete=models.CASCADE, db_index=True)
+    eva_vehicle = models.ForeignKey(EvaVehicle, on_delete=models.SET_NULL, null=True)
+    eva_crewmember = models.ForeignKey(EvaCrewmember, on_delete=models.SET_NULL, null=True)
