@@ -25,13 +25,13 @@ def features(request):
 
 @login_required
 def chat(request):
+    gateway_node_number = int(os.getenv('MQTT_NODE_NUMBER'))
     if request.method == "POST":
         form = ChatForm(request.POST)
         if form.is_valid():
             message = request.user.username + ': '
             message += form.cleaned_data['message']
-            number = int(os.getenv('MQTT_NODE_NUMBER'))
-            send_message = {'channel': 0, 'from': number, 'payload': message, 'type': 'sendtext'}
+            send_message = {'channel': 0, 'from': gateway_node_number, 'payload': message, 'type': 'sendtext'}
             tls = None #os.getenv('MQTT_TLS')
             data = json.dumps(send_message)
             topic = "msh/2/json/mqtt/"
@@ -43,4 +43,11 @@ def chat(request):
                 )
 
     form = ChatForm()
-    return render(request, "chat.html", {"form": form})
+    past = date.today() - timedelta(days = 1)
+    messages = []
+    for text_log in TextLog.objects.filter(updated_at__gt = past).order_by('-updated_at').all():
+        message = f'{text_log.text} {text_log.updated_at}'
+        if text_log.station.hardware_number != gateway_node_number:
+            message = f'{text_log.station.name}: {message}'
+        messages.append(message)
+    return render(request, "chat.html", {"form": form, "messages": messages})
