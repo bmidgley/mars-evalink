@@ -29,29 +29,17 @@ def chat(request):
         form = ChatForm(request.POST)
         if form.is_valid():
             message = form.cleaned_data['message']
-            user = request.user
             number = int(os.getenv('MQTT_NODE_NUMBER'))
-            hexid = '!' + hex(number)[2:10]
-            email = user.email
-            timestamp = int(datetime.timestamp(datetime.now()))
-            node_message = {'channel': 0, 'from': number, 'id': timestamp + 1, 'payload': {'hardware': 777, 'id': hexid, 'longname': email, 'shortname': email[0:3]}, 'sender': hexid, 'timestamp': timestamp, 'to': number, 'type': 'nodeinfo'}
-            text_message = {'channel': 0, 'from': number, 'id': timestamp + 2, 'payload': {'text': message}, 'sender': hexid, 'timestamp': timestamp, 'to': number, 'type': 'text'}
             send_message = {'channel': 0, 'from': number, 'payload': message, 'type': 'sendtext'}
-            broadcast(node_message, f"LongFast/{hexid}")
-            broadcast(text_message, f"LongFast/{hexid}")
-            broadcast(send_message, "mqtt")
+            tls = None #os.getenv('MQTT_TLS')
+            data = json.dumps(send_message)
+            topic = "msh/2/json/mqtt/"
+            publish.single(topic, data,
+                hostname=os.getenv('MQTT_SERVER'),
+                port=int(os.getenv('MQTT_PORT')),
+                auth = {'username':os.getenv('MQTT_USER'), 'password':os.getenv('MQTT_PASSWORD')},
+                tls=tls,
+                )
 
     form = ChatForm()
     return render(request, "chat.html", {"form": form})
-
-def broadcast(map, sub):
-    tls = None #os.getenv('MQTT_TLS')
-    data = json.dumps(map)
-    topic = f"msh/2/json/{sub}/"
-    print(f'{topic} => {data}')
-    publish.single(topic, data,
-        hostname=os.getenv('MQTT_SERVER'),
-        port=int(os.getenv('MQTT_PORT')),
-        auth = {'username':os.getenv('MQTT_USER'), 'password':os.getenv('MQTT_PASSWORD')},
-        tls=tls,
-        )
