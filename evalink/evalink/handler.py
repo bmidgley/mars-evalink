@@ -15,7 +15,7 @@ def process_message(message):
     station = Station.objects.filter(hardware_number=number).first()
 
     if message['type'] == 'nodeinfo':
-        print(message)
+        # print(message)
         if station == None:
             station_profile = StationProfile.objects.first()
             if station_profile == None:
@@ -124,7 +124,7 @@ def process_message(message):
             text=payload.get('text'),
             updated_at=time)
         text_log.save()
-        if "text" not in station.features["properties"]: station.features["properties"]["texts"] = [] # remove
+        if "texts" not in station.features["properties"]: station.features["properties"]["texts"] = [] # remove
         station.features["properties"]["texts"].append({
             "text": text_log.text,
             "coordinates": station.features["geometry"].get("coordinates"),
