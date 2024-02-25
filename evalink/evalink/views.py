@@ -8,6 +8,7 @@ from .forms import ChatForm
 import paho.mqtt.publish as publish
 import os
 import json
+from . import handler
 
 load_dotenv()
 
@@ -41,6 +42,9 @@ def chat(request):
                 auth = {'username':os.getenv('MQTT_USER'), 'password':os.getenv('MQTT_PASSWORD')},
                 tls=tls,
                 )
+            timestamp = int(datetime.timestamp(datetime.now()))
+            text_message = {'channel': 0, 'from': gateway_node_number, 'id': timestamp, 'payload': {'text': message}, 'timestamp': timestamp, 'type': 'text'}
+            handler.process_message(text_message)
 
     form = ChatForm()
     past = date.today() - timedelta(days = 1)
