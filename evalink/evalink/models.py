@@ -22,7 +22,7 @@ class Hardware(models.Model):
 class Station(models.Model):
     station_profile = models.ForeignKey(StationProfile, on_delete=models.SET_NULL, null=True, db_index=True)
     last_position = models.ForeignKey("PositionLog", related_name='last_position', on_delete=models.SET_NULL, null=True, db_index=True)
-    firmware = models.CharField(null=True, max_length=100)
+    firmware = models.CharField(null=True, blank=True, max_length=100)
     hardware = models.ForeignKey(Hardware, on_delete=models.SET_NULL, null=True, db_index=True)
     name = models.CharField(max_length=255, db_index=True)
     short_name = models.CharField(max_length=255)
@@ -61,7 +61,7 @@ class TelemetryLog(models.Model):
 class TextLog(models.Model):
     station = models.ForeignKey(Station, on_delete=models.CASCADE, db_index=True)
     position_log = models.ForeignKey(PositionLog, on_delete=models.SET_NULL, null=True, db_index=True)
-    destination = models.ForeignKey(Station, related_name='destination', on_delete=models.SET_NULL, db_index=True, null=True)
+    destination = models.ForeignKey(Station, related_name='destination', on_delete=models.SET_NULL, db_index=True, null=True, blank=True)
     text = models.TextField(db_index=True)
     serial_number = models.BigIntegerField(db_index=True, unique=True)
     updated_at = models.DateTimeField(null=False, db_index=True)
