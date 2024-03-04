@@ -5,3 +5,7 @@
 Make the erd:
 
 ./manage.py graph_models -a -g -o ../docs/schema.png
+
+Install
+
+pip install -r requirements.txt
