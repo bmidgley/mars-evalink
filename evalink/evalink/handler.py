@@ -34,7 +34,7 @@ def process_message(message):
                 hardware_number=number,
                 hardware_node=payload['id'],
                 station_type=hardware.station_type,
-                short_name=payload['shortname'])
+                short_name=payload['shortname'] or 'blank')
             station.updated_at = time
             try:
                 station.save()
@@ -43,7 +43,7 @@ def process_message(message):
                 return
             print(f'adding station {station} at {time} because there was nothing with number {number}')
         station.updated_at = time
-        station.name = payload['longname']
+        station.name = payload['longname'] or 'blank'
         station.save()
         return
 
