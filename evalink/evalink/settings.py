@@ -134,3 +134,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 STATIC_ROOT = os.getenv('STATIC_ROOT')
 MEDIA_ROOT = os.getenv('MEDIA_ROOT')
+
+CSRF_TRUSTED_ORIGINS = ['https://evalink03.westus3.cloudapp.azure.com']
+ALLOWED_HOSTS = ['evalink03.westus3.cloudapp.azure.com', 'localhost', '127.0.0.1']
