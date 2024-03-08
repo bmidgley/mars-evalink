@@ -86,7 +86,7 @@ def process_message(message):
             ground_track=ground_track,
             updated_at=time)
         position_log.save()
-        station.features["geometry"]["coordinates"] = [lat, lon]
+        station.features["geometry"]["coordinates"] = [lon, lat]
         station.features["properties"]["altitude"] = position_log.altitude or station.features["properties"]["altitude"]
         station.features["properties"]["ground_speed"] = position_log.ground_speed or station.features["properties"]["ground_speed"]
         station.features["properties"]["ground_track"] = position_log.ground_track or station.features["properties"]["ground_track"]
