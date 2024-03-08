@@ -13,6 +13,10 @@ from . import handler
 load_dotenv()
 
 @login_required
+def index(request):
+    return render(request, "map.html")
+
+@login_required
 def features(request):
     data = {
         "type": "FeatureCollection",
