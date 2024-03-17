@@ -19,6 +19,30 @@ class NeighborLogAdmin(admin.ModelAdmin):
 class StationMeasureAdmin(admin.ModelAdmin):
     list_display = [f.name for f in StationMeasure._meta.fields]
 
+class CampusAdmin(admin.ModelAdmin):
+    list_display = [f.name for f in Campus._meta.fields]
+
+class VehicleAdmin(admin.ModelAdmin):
+    list_display = [f.name for f in Vehicle._meta.fields]
+
+class CrewAdmin(admin.ModelAdmin):
+    list_display = [f.name for f in Crew._meta.fields]
+
+class CrewmemberAdmin(admin.ModelAdmin):
+    list_display = [f.name for f in Crewmember._meta.fields]
+
+class EvaAdmin(admin.ModelAdmin):
+    list_display = [f.name for f in Eva._meta.fields]
+
+class EvaCrewmemberAdmin(admin.ModelAdmin):
+    list_display = [f.name for f in EvaCrewmember._meta.fields]
+
+class EvaVehicleAdmin(admin.ModelAdmin):
+    list_display = [f.name for f in EvaVehicle._meta.fields]
+
+class EvaStationAdmin(admin.ModelAdmin):
+    list_display = [f.name for f in EvaStation._meta.fields]
+
 admin.site.register(Hardware, HardwareAdmin)
 admin.site.register(Station, StationAdmin)
 admin.site.register(StationProfile, StationProfileAdmin)
@@ -27,3 +51,11 @@ admin.site.register(TelemetryLog, TelemetryLogAdmin)
 admin.site.register(TextLog, TextLogAdmin)
 admin.site.register(NeighborLog, NeighborLogAdmin)
 admin.site.register(StationMeasure, StationMeasureAdmin)
+admin.site.register(Campus, CampusAdmin)
+admin.site.register(Vehicle, VehicleAdmin)
+admin.site.register(Crew, CrewAdmin)
+admin.site.register(Crewmember, CrewmemberAdmin)
+admin.site.register(Eva, EvaAdmin)
+admin.site.register(EvaCrewmember, EvaCrewmemberAdmin)
+admin.site.register(EvaVehicle, EvaVehicleAdmin)
+admin.site.register(EvaStation, EvaStationAdmin)
