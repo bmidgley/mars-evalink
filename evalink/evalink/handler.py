@@ -71,6 +71,8 @@ def process_message(message):
         "id": str(station.id)
     }
     if "texts" not in station.features["properties"]: station.features["properties"]["texts"] = [] # remove
+    station.features["properties"]["node_type"] = station.station_type
+
 
     if message['type'] == 'position':
         lat = payload['latitude_i'] / 10000000
