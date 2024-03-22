@@ -8,6 +8,9 @@
   {{ form }}
   <button type="submit" value="Submit">Send</button>
 </form>
-{% for message in messages %}
-  <hr>{{ message }}</hr>
+{% for text in texts %}
+  <hr>
+    {{text.station.name}}: {{text.text}} {{text.updated_at}}
+    <a href="http://maps.google.com/maps?z=12&t=k&q=loc:{{text.position_log.latitude}}+{{text.position_log.longitude}}" target="_blank">location</a>
+  </hr>
 {% endfor %}

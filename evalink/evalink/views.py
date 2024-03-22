@@ -53,10 +53,5 @@ def chat(request):
 
     form = ChatForm()
     past = date.today() - timedelta(days = 1)
-    messages = []
-    for text_log in TextLog.objects.filter(updated_at__gt = past).order_by('-updated_at').all():
-        message = f'{text_log.text} {text_log.updated_at}'
-        if text_log.station.hardware_number != gateway_node_number:
-            message = f'{text_log.station.name}: {message}'
-        messages.append(message)
-    return render(request, "chat.html", {"form": form, "messages": messages})
+    texts = TextLog.objects.filter(updated_at__gt = past).order_by('-updated_at').all()
+    return render(request, "chat.html", {"form": form, "texts": texts})
