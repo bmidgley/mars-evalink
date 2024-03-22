@@ -46,9 +46,10 @@ def chat(request):
                 auth = {'username':os.getenv('MQTT_USER'), 'password':os.getenv('MQTT_PASSWORD')},
                 tls=tls,
                 )
-            timestamp = int(datetime.timestamp(datetime.now()))
-            text_message = {'channel': 0, 'from': gateway_node_number, 'id': timestamp, 'payload': {'text': message}, 'timestamp': timestamp, 'type': 'text'}
-            handler.process_message(text_message)
+            # do not process the message now or it will appear as a duplicate when it's seen on the network
+            # timestamp = int(datetime.timestamp(datetime.now()))
+            # text_message = {'channel': 0, 'from': gateway_node_number, 'id': timestamp, 'payload': {'text': message}, 'timestamp': timestamp, 'type': 'text'}
+            # handler.process_message(text_message)
 
     form = ChatForm()
     past = date.today() - timedelta(days = 1)
