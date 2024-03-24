@@ -11,9 +11,13 @@
 </form>
 {% for text in texts %}
   <hr>
-    {{text.station.name}}: {{text.text}} {{text.updated_at|timezone:'America/Denver'}}
+    {{text.station.name}}: {{text.text}} {{text.updated_at|timezone:'America/Denver'}} Position:
     {% if text.position_log %}
-      <a href="http://maps.google.com/maps?z=12&t=k&q=loc:{{text.position_log.latitude}}+{{text.position_log.longitude}}" target="_blank">location</a>
+      <a href="http://maps.google.com/maps?z=12&t=k&q=loc:{{text.position_log.latitude}}+{{text.position_log.longitude}}" target="_blank">sent-from</a>
+    {% endif %}
+    /
+    {% if text.station.last_position %}
+      <a href="http://maps.google.com/maps?z=12&t=k&q=loc:{{text.station.last_position.latitude}}+{{text.station.last_position.longitude}}" target="_blank">latest</a>
     {% endif %}
   </hr>
 {% endfor %}
