@@ -11,7 +11,7 @@
 </form>
 {% for text in texts %}
   <hr>
-    {{text.station.name}}: {{text.text}} {{text.updated_at|timezone:'America/Denver'}} Position:
+    {{text.station.name}}: {{text.text}} {{text.updated_at|timezone:'America/Denver'}} Location:
     {% if text.position_log %}
       <a href="http://maps.google.com/maps?z=12&t=k&q=loc:{{text.position_log.latitude}}+{{text.position_log.longitude}}" target="_blank">sent-from</a>
     {% endif %}
