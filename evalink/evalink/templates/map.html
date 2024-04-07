@@ -6,10 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenLayers GeoJSON Web Map</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <!-- Include OpenLayers library -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.1.0/ol.css" type="text/css">
     <script src="https://cdn.jsdelivr.net/npm/ol@7.1.0/dist/ol.js"></script>
     <style>
+        html,
+        body {
+            font-size: 12px;
+        }
+
         #map {
             position: absolute;
             top: 0;
@@ -58,7 +69,7 @@
 
         #emergency-device-panel {
             position: fixed;
-            bottom: 40px;
+            bottom: 170px;
             left: 10px;
             background-color: #fff;
             border: 1px solid #ccc;
@@ -66,6 +77,7 @@
             border-radius: 5px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
             max-height: 200px;
+            width: 200px;
             overflow-y: auto;
         }
 
@@ -95,6 +107,50 @@
             text-decoration: none;
         }
 
+        .modal-body {
+            padding: 20px;
+        }
+
+        #message-tab {
+            position: absolute;
+            width: 200px;
+            bottom: 40px;
+            left: 10px;
+            background-color: #fff;
+            z-index: 2;
+            border-radius: 5px;
+
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        #message-tab form {
+            display: flex;
+            flex-direction: column;
+            padding:0px;
+        
+        }
+        form input {
+            margin: 3px;
+        }
+
+        .list-group-item {
+            list-style: none;
+            padding: 10px;
+            /* background-color: #f8f9fa; */
+            border: 1px solid #dee2e6;
+        }
+
+        .list-group-item:last-child {
+            border-bottom-right-radius: 0.25rem;
+            border-bottom-left-radius: 0.25rem;
+        }
+
+        .list-group-item {
+            list-style: none;
+        }
+
         @keyframes blink {
             0% {
                 opacity: 1;
@@ -107,6 +163,51 @@
             100% {
                 opacity: 1;
             }
+        }
+
+        .close-btn {
+            position: absolute;
+            top: -8px;
+            right: 5px;
+            font-size: 25px;
+            cursor: pointer;
+        }
+
+        /* Style the tab */
+        .tab {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+        }
+
+        /* Style the buttons inside the tab */
+        .tab button {
+            background-color: inherit;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 14px 16px;
+            transition: 0.3s;
+            font-size: 17px;
+        }
+
+        /* Change background color of buttons on hover */
+        .tab button:hover {
+            background-color: #ddd;
+        }
+
+        /* Create an active/current tablink class */
+        .tab button.active {
+            background-color: #ccc;
+        }
+
+        /* Style the tab content */
+        .tab-content {
+            display: none;
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            border-top: none;
         }
     </style>
 </head>
@@ -122,10 +223,18 @@
 
     <div id="time-slider-container">
         <h3 id="nameTimeSlider"></h3>
-        <input type="text" id="tag-input" placeholder="Add tags...">
-        <input type="button" value="Add Tag" onclick="addTag()">
+        <select id="ddlCrews"></select>
+        <button type="button" class="btn btn-success" title="Add Crew" onclick="addCrew()">
+            <span class="bi bi-person-plus"></span>
+        </button>
+        <button type="button" class="btn btn-danger" title="Remove Crew" onclick="removeCrew()">
+            <span class="bi bi-person-dash"></span>
+        </button>
+        <button type="button" class="btn btn-primary" title="View Crew" onclick="viewCrew()">
+            <span class="bi bi-eye"></span>
+        </button>
         <br>
-        <input type="range" id="time-slider" min="0" max="1" step="0.1" value="0">
+        <input type="range" class="form-control-range" id="time-slider" min="0" max="1" step="0.1" value="0">
         <div id="selected-time"></div>
         <button id="emergency-button" title="Emergency Signal" onclick="sendEmergencySignal()">
             <img id="emergency-icon" src="https://img.icons8.com/ios-filled/50/000000/siren.png" height="30"
@@ -136,9 +245,39 @@
         </button>
     </div>
 
+    <div id="message-tab" class="hidden">
+        <h3>Message</h3>
+        <form class="form" method="post" id="message-post">
+            <input type="text" name="message" class="form-control" id="form-control" placeholder="Message ..." required>
+            
+            <input type="submit" value="Send Message">
+        </form>
+    </div>
+
     <div id="emergency-device-panel" class="hidden">
         <h3>Emergency Device List</h3>
         <ul id="emergency-device-list"></ul>
+    </div>
+
+    <div class="modal fade" id="crewModal" tabindex="-1" role="dialog" aria-labelledby="crewModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="crewModalLabel">Crew Details</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <ul class="list-group" id="passengerList">
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -158,21 +297,23 @@
 
         let markerData = {};
         let timeSliderVisible = false;
+        let emergencyList = [];
+        let geojsonData;
+        let deviceCrew = [];
 
         function updateGeoJSON() {
             fetch(geojsonUrl)
                 .then(response => response.json())
                 .then(data => {
                     vectorSource.clear();
+                    geojsonData = data;
 
                     const features = vectorSource.getFormat().readFeatures(data, {
                         featureProjection: map.getView().getProjection(),
                     });
-                    vectorSource.addFeatures(features);
-
-                    // markerData = {};
 
                     features.forEach(feature => {
+
                         const name = feature.get('name');
                         const time = feature.get('time');
                         const coordinates = feature.getGeometry().getCoordinates();
@@ -191,7 +332,15 @@
                                 markerData[name].coordinates.push(coordinates);
                             }
                         }
+
+                        if (emergencyList.includes(name)) {
+                            feature.set('emergency', true);
+                        } else {
+                            feature.set('emergency', false);
+                        }
                     });
+
+                    vectorSource.addFeatures(features);
 
                     updateMarkerList();
                     if (timeSliderVisible) {
@@ -212,6 +361,7 @@
                 markerItem.addEventListener('click', function () {
                     zoomToMarker(name);
                     showTimeSlider(name);
+                    populateCrewDropdown(name);
                 });
                 markerList.appendChild(markerItem);
             });
@@ -225,18 +375,6 @@
 
             markerList.appendChild(downloadJsonButton);
         }
-
-        // function zoomToMarker(name) {
-        //     const feature = vectorSource.getFeatures().find(feature => feature.get('name') === name);
-        //     if (feature) {
-        //         const coordinates = feature.getGeometry().getCoordinates();
-        //         map.getView().animate({
-        //             center: coordinates,
-        //             zoom: 19,
-        //             duration: 1000,
-        //         });
-        //     }
-        // }
 
         function showTimeSlider(name) {
             const times = markerData[name].times;
@@ -253,7 +391,6 @@
                 emergencyIcon.src = 'https://img.icons8.com/ios-filled/50/000000/siren.png';
             }
 
-            // Enable or disable the slider based on the length of times array
             timeSlider.disabled = times.length <= 1;
 
             timeSlider.setAttribute('max', times.length - 1);
@@ -264,7 +401,6 @@
                 const selected = times[index];
                 selectedTime.textContent = `Time: ${selected}`;
 
-                // Move the marker to the selected coordinates
                 moveMarkerToCoordinates(coordinates[index]);
             };
 
@@ -272,8 +408,6 @@
                 const index = parseInt(timeSlider.value, 10);
                 const selected = times[index];
                 selectedTime.textContent = `Time: ${selected}`;
-
-                // Draw a temporary marker at the selected coordinates
                 drawTemporaryMarker(coordinates[index]);
             };
 
@@ -284,19 +418,38 @@
             timeSliderContainer.style.display = 'block';
         }
 
+        function createSvgDataURL(fillColor, nodeType) {
+            const svggString = `
+            <svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="24" viewBox="0 0 24 24" width="24">
+                <g>
+                    <path d="M22,16v-2l-8.5-5V3.5C13.5,2.67,12.83,2,12,2s-1.5,0.67-1.5,1.5V9L2,14v2l8.5-2.5V19L8,20.5L8,22l4-1l4,1l0-1.5L13.5,19 v-5.5L22,16z" fill="${fillColor}"/>
+                    <path d="M0,0h24v24H0V0z" fill="none"/>
+                </g>
+            </svg>`;
+
+            const svgString = `
+                <svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384.42 817.51" height="20" width="9"><g id="Layer_1-2" data-name="Layer 1"><g><path d="M380.53,471.66c5.06-38.19,17.95-169.47-64.37-245.63-7.81-7.22-16.78-14.24-27.12-20.71-9.67,7.16-24.21,16.31-43.49,23.14-19.29,6.82-36.36,8.87-48.38,9.38-.02,12.6-.04,172.98-.06,201.01,0,1.47-1.17,2.68-2.63,2.71-2.12,.04-4.22,.03-6.29-.03-1.46-.04-2.61-1.26-2.61-2.72V237.77c-34.25-2.66-65.62-11.85-91.62-32.46-12.44,8.18-22.83,16.99-31.54,25.84C-16.46,311.3-.33,437.9,5.11,472.13c23.98,3.36,47.96,6.72,71.93,10.08v-136.01c4.18-.54,8.36-1.09,12.54-1.63,.14,152.19,.28,244.39,.42,396.58h95.57v-219.99c0-1.21,.98-2.19,2.19-2.19h7.16c1.21,0,2.19,.98,2.19,2.19v219.99h98.22c0-151.65,0-243.3,.01-394.95h12.55c.29,45.34,.57,90.67,.86,136.01,23.93-3.52,47.86-7.03,71.78-10.55Zm-241.14-205.19h7.21c1.07,0,1.93,.86,1.93,1.93v7.19c0,1.07-.86,1.93-1.93,1.93h-7.21c-1.07,0-1.93-.86-1.93-1.93v-7.19c0-1.07,.86-1.93,1.93-1.93Zm-18.18,0h7.2c1.07,0,1.93,.86,1.93,1.93v7.19c0,1.07-.86,1.93-1.93,1.93h-7.2c-1.07,0-1.93-.86-1.93-1.93v-7.19c0-1.07,.86-1.93,1.93-1.93Zm34.17,107.31c-8.33-.11-16.66-.1-24.99-.02-3.01,.03-4.13-1.31-4.11-4.24,.07-11.49,.06-22.99,.01-34.48-.01-2.76,1.18-3.88,3.92-3.85,8.5,.07,16.99,.08,25.49-.02,3.03-.04,4.14,1.22,4.07,4.19-.12,5.83-.03,11.66-.03,17.49-.01,5.5-.12,11,.04,16.49,.09,3.24-1.2,4.48-4.4,4.44Zm9.4-96.26h-7.21c-1.07,0-1.93-.86-1.93-1.93v-7.19c0-1.07,.86-1.93,1.93-1.93h7.21c1.07,0,1.93,.86,1.93,1.93v7.19c0,1.07-.86,1.93-1.93,1.93Zm100.39,14.58h-46.04c-1.07,0-1.93-.86-1.93-1.93v-21.77c0-1.07,.86-1.93,1.93-1.93h46.04c1.07,0,1.93,.86,1.93,1.93v21.77c0,1.07-.86,1.93-1.93,1.93Z" /><path d="M190.86,0c-56.36,.48-101.63,46.46-101.39,103,.25,55.69,45.58,100.69,101.4,100.64,56.65-.04,101.84-44.3,102.03-99.89C293.1,45.81,247.56-.49,190.86,0Zm65.37,162.37c-36.1,31.11-98.75,29.78-132.38-2.8-31.06-30.08-27.42-73.34,8.33-97.92,17.84-12.26,37.91-17.49,59.3-18.23,22.71,.77,43.72,6.71,61.88,20.59,34.36,26.28,35.52,70.22,2.87,98.36Z" /><path d="M104.64,199.88c3.62-2.21,8.08-4.48,13.39-6.31,2.11-.73,4.14-1.31,6.06-1.77,8.14,5.8,33.63,22.32,69.86,21.45,21.02-.5,42.13-7.37,63.25-21.05,2.11,.35,4.36,.82,6.71,1.44,5.34,1.41,9.93,3.26,13.73,5.12-10.12,7.63-40.16,28.21-83.86,29.23-46.69,1.09-79.21-20.83-89.13-28.11Z" /><path d="M68.81,208.2v-66.99c6.19,.45,12.37,.9,18.56,1.36,2.63,6.08,6.35,13.31,11.61,20.93,5.85,8.47,11.96,15.03,17.17,19.9-7.81,3.17-16.26,7.02-25.11,11.69-8.2,4.34-15.61,8.78-22.22,13.11Z" /><path d="M294.75,142.53c6.41-.44,12.81-.88,19.22-1.32,0,22.54-.02,45.08-.03,67.61-6.33-4.34-13.69-8.89-22.1-13.25-9.03-4.69-17.56-8.27-25.21-11.04,5-5.02,10.74-11.59,16.26-19.88,5.38-8.08,9.17-15.71,11.85-22.12Z" /><path d="M301.27,77.86c15.31,15.03,13.44,48.06-2.65,54.71,4.46-17.86,3.55-34.62,2.65-54.71Z" /><path d="M81.06,77.86c-15.31,15.03-13.44,48.06,2.65,54.71-4.46-17.86-3.55-34.62-2.65-54.71Z" /><rect x="224.19" y="275.9" width="35.64" height="6.77" /><path d="M237.68,64.32c-14.23-8.13-29.81-11.2-46.85-11.54-19.59,.25-38.62,5.18-55.11,17.5-33.32,24.89-31.52,69.66,4.2,91.06,31.77,19.04,65.21,19.87,97.92,2.83,19.48-10.16,33.17-26.32,32.9-49.91-.28-23.31-13.68-38.87-33.06-49.94Zm12.87,40.29c-.28,.08-.57,.13-.84,.13-1.25,0-2.39-.81-2.77-2.06-1.75-5.81-5.59-14.17-13.9-21.12-10.62-8.86-22.37-10.18-28.43-10.18-1.59,0-2.9-1.31-2.9-2.9s1.31-2.9,2.9-2.9c3.42,0,8.45,.38,14.13,2,5.68,1.64,12,4.51,18.03,9.54,9.39,7.85,13.74,17.31,15.72,23.88,.47,1.52-.4,3.14-1.94,3.61Z" /><path d="M224.19,275.9v6.77h35.64v-6.77h-35.64Z" /><path d="M41.07,553.44h0c-19.86,0-35.97-16.1-35.97-35.97v-35.97l71.93,10v25.97c0,19.86-16.1,35.97-35.97,35.97Z" /><path d="M344.71,553.44h0c19.86,0,35.97-16.1,35.97-35.97v-35.97s-71.93,10-71.93,10v25.97c0,19.86,16.1,35.97,35.97,35.97Z" /><path d="M89.81,748.44h95.67v21.24c0,26.4-21.43,47.83-47.83,47.83h0c-26.4,0-47.83-21.43-47.83-47.83v-21.24h0Z" /><path d="M198.19,748.44h95.67v21.24c0,26.4-21.43,47.83-47.83,47.83h0c-26.4,0-47.83-21.43-47.83-47.83v-21.24h0Z" /></g></g></svg>
+            `;
+
+            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(nodeType == 'person' ? svgString : svggString);
+        }
+
         function drawTemporaryMarker(coordinates) {
             const temporaryMarker = new ol.Feature({
                 geometry: new ol.geom.Point(coordinates),
             });
 
-            temporaryMarker.setStyle(new ol.style.Style({
-                image: new ol.style.Icon({
-                    src: 'static/location_icon.svg.png',
-                    size: [512, 512],
-                    scale: 0.04,
-                    opacity: 1,
-                }),
-            }));
+            temporaryMarker.setStyle(
+                new ol.style.Style({
+                    image: new ol.style.Icon({
+                        src: createSvgDataURL('#00f', 'person'),
+                        imgSize: [24, 24],
+                        anchor: [0.5, 1],
+                        anchorXUnits: 'fraction',
+                        anchorYUnits: 'fraction',
+                    }),
+                })
+            );
 
             vectorSource.addFeature(temporaryMarker);
         }
@@ -325,14 +478,22 @@
 
         const vectorLayer = new ol.layer.Vector({
             source: vectorSource,
-            style: new ol.style.Style({
-                image: new ol.style.Icon({
-                     src: 'static/location_icon.svg.png',
-                    //src: 'https://docs.maptiler.com/openlayers/geojson-points/icon-plane-512.png',
-                    size: [512, 512],
-                    scale: 0.03,
-                }),
-            }),
+            style: function (feature) {
+                const emergency = feature.get('emergency');
+                const nodeType = feature.get('node_type')
+                const coordinates = feature.getGeometry().getCoordinates();
+                var iconColor = emergency ? '#ff0000' : '#000';
+ 
+                return new ol.style.Style({
+                    image: new ol.style.Icon({
+                        src: createSvgDataURL(iconColor, nodeType),
+                        imgSize: [24, 24],
+                        anchor: [0.5, 1],
+                        anchorXUnits: 'fraction',
+                        anchorYUnits: 'fraction',
+                    }),
+                });
+            },
         });
 
         const map = new ol.Map({
@@ -365,21 +526,46 @@
                 return feature;
             });
 
+            let messages = JSON.parse(localStorage.getItem("messages"));
+            let message;
+            if(messages.length && feature) {
+                message = messages.find(entry=> entry.name == feature.values_.name);
+            }
+
             if (feature) {
                 const coordinates = feature.getGeometry().getCoordinates();
-                const content = `<div class="popup">
-                                    <span><b>Name: </b>${feature.values_.name}</span></br>
-                                    <span><b>Label: </b>${feature.values_.label}</span></br>
-                                    <span><b>Time: </b>${feature.values_.time}</span></br>
-                                    <span><b>Hardware: </b>${feature.values_.hardware}</span></br>
-                                    <span><b>Node Type: </b>${feature.values_.node_type}</span>
-                                </div>`;
 
-                overlay.getElement().innerHTML = content;
+                const popupContent = `<div class="popup">
+                    <div class="close-btn" onclick="closeOverlay()">×</div>
+
+                    <div class="tab">
+                        <button class="tablinks" onclick="openCity(event, 'Content')">Content</button>
+                        <button class="tablinks" onclick="openCity(event, 'Message1')">Message 1</button>
+                        <button class="tablinks" onclick="openCity(event, 'Message2')">Message 2</button>
+                    </div>
+
+                    <div class="tab-content" id="Content">
+                        <span><b>Name: </b>${feature.values_.name}</span></br>
+                        <span><b>Label: </b>${feature.values_.label}</span></br>
+                        <span><b>Time: </b>${feature.values_.time}</span></br>
+                        <span><b>Hardware: </b>${feature.values_.hardware}</span></br>
+                        <span><b>Node Type: </b>${feature.values_.node_type}</span>
+                    </div>
+
+                    <div class="tab-content" id="Message1">
+                        <div>${message ? message.content : "Message 1"}</div>
+                    </div>
+
+                    <div class="tab-content" id="Message2">
+                        <div>Message 2</div>
+                    </div>
+                </div>`;
+                // const content = ``;
+                
+
+                overlay.getElement().innerHTML = popupContent;
                 overlay.setPosition(coordinates);
-            } else {
-                overlay.setPosition(undefined);
-            }
+            } 
         });
 
         map.on('pointermove', function (e) {
@@ -395,6 +581,26 @@
         setInterval(updateGeoJSON, 9000);
 
         updateGeoJSON();
+
+        function closeOverlay() {
+            overlay.setPosition(undefined);
+        }
+
+        function openCity(evt, cityName) {
+            console.log("Click Event");
+
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(cityName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
 
         function downloadSelected() {
             const name = document.getElementById('nameTimeSlider').innerHTML;
@@ -449,35 +655,16 @@
             URL.revokeObjectURL(url);
         }
 
-        function addTag() {
-            const name = document.getElementById('nameTimeSlider').innerHTML;
-            const tagInput = document.getElementById('tag-input');
-            const tag = tagInput.value.trim();
-
-            if (name && tag) {
-                // Do something with the tag, e.g., store it, display it, etc.
-                console.log(`Tag "${tag}" added to device "${name}"`);
-                // Clear the input field after adding the tag
-                tagInput.value = '';
-            }
-        }
-
-
-        let emergencyList = [];
         function sendEmergencySignal() {
             const name = document.getElementById('nameTimeSlider').innerHTML;
 
             if (name && !emergencyList.includes(name)) {
                 const emergencyIcon = document.getElementById('emergency-icon');
                 emergencyIcon.src = 'https://img.icons8.com/ios-filled/50/FF0000/siren.png';
-                // Add the device to the emergency list
                 addToEmergencyList(name);
-                // Perform actions related to sending an emergency signal
                 console.log(`Emergency signal sent for device "${name}"`);
             }
         }
-
-
 
         function addToEmergencyList(deviceName) {
             const emergencyListPanel = document.getElementById('emergency-device-list');
@@ -495,21 +682,18 @@
                 };
                 listItem.appendChild(emergencyButton);
 
-                // Create a remove button (X)
                 const removeButton = document.createElement('a');
-                removeButton.innerHTML = '(&times;)'; // Unicode for '×' (multiplication sign)
+                removeButton.innerHTML = '(&times;)';
                 removeButton.href = '#';
                 removeButton.title = 'Remove From Emergency';
                 removeButton.onclick = function () {
                     removeDeviceFromEmergencyList(deviceName, listItem);
                 };
 
-                // Append the remove button to the list item
                 listItem.appendChild(removeButton);
 
                 emergencyListPanel.appendChild(listItem);
 
-                // Show the emergency device panel
                 showEmergencyPanel();
             }
         }
@@ -541,6 +725,18 @@
 
             const emergencyIcon = document.getElementById('emergency-icon');
             emergencyIcon.src = 'https://img.icons8.com/ios-filled/50/000000/siren.png';
+
+            const features = vectorSource.getFormat().readFeatures(geojsonData, {
+                featureProjection: map.getView().getProjection(),
+            });
+
+            features.forEach(feature => {
+
+                const name = feature.get('name');
+                if (name === deviceName) {
+                    feature.set('emergency', false);
+                }
+            });
         }
 
 
@@ -556,6 +752,160 @@
 
         document.getElementById('download-button').addEventListener('click', downloadSelected);
 
+        let crews = [
+            {
+                name: "Crew 287",
+                passengers: [
+                    { name: "Duluu", title: "HSO" },
+                    { name: "Tungaa", title: "Psychologist" },
+                    { name: "Muggi", title: "Engineer" },
+                    { name: "Dono", title: "Commander" },
+                    { name: "Sunny", title: "Journalist" },
+                    { name: "Davaa", title: "Geologist" }
+                ]
+            },
+            {
+                name: "Crew 288",
+                passengers: [
+                    { name: "Muluu", title: "HSO" },
+                    { name: "Sungaa", title: "Psychologist" },
+                    { name: "Puggi", title: "Engineer" },
+                    { name: "Eno", title: "Commander" },
+                    { name: "Munny", title: "Journalist" },
+                    { name: "Aavaa", title: "Geologist" }
+                ]
+            },
+            {
+                name: "Crew 289",
+                passengers: [
+                    { name: "Kuluu", title: "HSO" },
+                    { name: "Pungaa", title: "Psychologist" },
+                    { name: "Vuggi", title: "Engineer" },
+                    { name: "Mano", title: "Commander" },
+                    { name: "Kunny", title: "Journalist" },
+                    { name: "Bavaa", title: "Geologist" }
+                ]
+            },
+        ];
+
+        function populateCrewDropdown(deviceName) {
+            const ddlCrews = document.getElementById('ddlCrews');
+            ddlCrews.innerHTML = '';
+
+            const filteredCrew = deviceCrew.filter(item => item.device === deviceName);
+            console.log(filteredCrew);
+            // const isCrewIncluded = deviceCrew.some(item => item.crew === crew.name);
+
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Select Crew';
+            option.selected = filteredCrew.length == 0;
+            ddlCrews.appendChild(option);
+
+            crews.forEach(crew => {
+                const option = document.createElement('option');
+                option.value = crew.name;
+                option.textContent = crew.name;
+                if (filteredCrew.length > 0) {
+                    const isCrewIncluded = filteredCrew.some(item => item.crew === crew.name);
+                    if (isCrewIncluded) {
+                        option.selected = true;
+                    }
+                }
+
+                ddlCrews.appendChild(option);
+            });
+        }
+
+        function addCrew() {
+            const selectedDevice = document.getElementById('nameTimeSlider').innerHTML;
+            const ddlCrews = document.getElementById('ddlCrews');
+            const selectedCrew = ddlCrews.value;
+
+            if (selectedDevice && selectedCrew) {
+                deviceCrew.push({ device: selectedDevice, crew: selectedCrew });
+            }
+        }
+
+        function removeCrew() {
+            const selectedDevice = document.getElementById('nameTimeSlider').innerHTML;
+            const ddlCrews = document.getElementById('ddlCrews');
+            ddlCrews.value = '';
+            const deviceIndex = deviceCrew.findIndex(item => item.device === selectedDevice);
+            if (deviceIndex !== -1) {
+                deviceCrew.splice(deviceIndex, 1);
+                console.log(`Crew removed for device: ${selectedDevice}`);
+            } else {
+                console.log(`No crew found for device: ${selectedDevice}`);
+            }
+        }
+
+        function viewCrew() {
+            const ddlCrews = document.getElementById('ddlCrews');
+            const selectedCrew = ddlCrews.value;
+
+            const crew = crews.find(item => item.name === selectedCrew);
+
+            if (crew) {
+                const modalLabel = document.getElementById('crewModalLabel');
+                modalLabel.textContent = `Crew Details - ${crew.name}`;
+
+                const passengerList = document.getElementById('passengerList');
+                passengerList.innerHTML = ''; // Clear previous content
+
+                crew.passengers.forEach(passenger => {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'list-group-item';
+                    listItem.textContent = `${passenger.title} : ${passenger.name}`;
+                    passengerList.appendChild(listItem);
+                });
+
+                // Show the Bootstrap modal
+                $('#crewModal').modal('show');
+            }
+        }
+
+        let messages = [];
+        localStorage.setItem("messages", JSON.stringify(messages));
+
+        let names = ['Astro_a02', 'Astro_a04', 'Hab1', 'Infra_i03', 'SolarCan1', 'Infra_i01', 'Infra_i02', 'Infra_i04', 'Infra_i05', 'SolarCan2', 'Astro_a03'];
+        // message update
+        document.getElementById("message-post").onsubmit = (e) => {
+            e.preventDefault();
+            let value = document.getElementById("form-control").value;
+            let messages = JSON.parse(localStorage.getItem("messages"));
+
+            let message;
+            if(messages.length) {
+                let { name } = messages[messages.length - 1];
+                let index = names.indexOf(name);
+                let nextIndex = index != names.length - 1 ? index++ : 0;
+
+                message = {
+                    name:names[nextIndex],
+                    content:value
+                }
+            } else {
+                message = {
+                    name:names[0],
+                    content:value
+                }
+            }
+           
+            messages.push(message);
+            localStorage.setItem("messages", JSON.stringify(messages));
+        }
+
+        function getFeaturesNames() {
+            let items = [];
+            let markers = document.querySelectorAll(".marker-item");
+            markers.forEach(entry => {
+                items.push(entry.innerHTML);
+            });
+
+            console.log(items);
+        }
+       
 
     </script>
 </body>
