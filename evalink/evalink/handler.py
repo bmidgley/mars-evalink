@@ -47,7 +47,10 @@ def process_message(message):
         station.save()
         return
 
-    if station == None: return
+    if station == None:
+        print(f'skipping this message because we do not know the station: {message}')
+        return
+
     if station.features == None: station.features = {
         "type": "Feature",
         "properties": {
@@ -72,7 +75,6 @@ def process_message(message):
     }
     if "texts" not in station.features["properties"]: station.features["properties"]["texts"] = [] # remove
     station.features["properties"]["node_type"] = station.station_type
-
 
     if message['type'] == 'position':
         lat = payload['latitude_i'] / 10000000
@@ -120,11 +122,12 @@ def process_message(message):
         return
 
     if message['type'] == 'text':
+        text = payload.get('text')
         text_log = TextLog(
             station=station,
             position_log=station.last_position,
-            serial_number=message.get("id"),
-            text=payload.get('text'),
+            serial_number=message.get("id") + (hash(text) % 100000),
+            text=text,
             updated_at=time)
         text_log.save()
         if "texts" not in station.features["properties"]: station.features["properties"]["texts"] = [] # remove

@@ -16,7 +16,7 @@ class StationProfile(models.Model):
 
 class Hardware(models.Model):
     name = models.CharField(max_length=255, db_index=True)
-    hardware_type = models.IntegerField(unique=True)
+    hardware_type = models.IntegerField(unique=False)
     station_type = models.CharField(max_length=255)
 
 class Station(models.Model):
