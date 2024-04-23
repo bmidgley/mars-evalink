@@ -44,6 +44,7 @@ def process_message(message):
             print(f'adding station {station} at {time} because there was nothing with number {number}')
         station.updated_at = time
         station.name = payload['longname'] or 'blank'
+        station.name = station.name.replace("\x00", "")
         station.save()
         return
 
@@ -122,11 +123,12 @@ def process_message(message):
         return
 
     if message['type'] == 'text':
-        text = payload.get('text')
+        text = payload.get('text').replace("\x00", "")
+        print(f'@@text message {text}')
         text_log = TextLog(
             station=station,
             position_log=station.last_position,
-            serial_number=message.get("id") + (hash(text) % 100000),
+            serial_number=message.get("id"), # + (hash(text) % 100000),
             text=text,
             updated_at=time)
         text_log.save()

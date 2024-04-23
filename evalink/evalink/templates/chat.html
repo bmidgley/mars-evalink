@@ -4,6 +4,9 @@
   <meta http-equiv="refresh" content="60">
 </head>
 <h2>Chat</h2>
+<p>
+  Broadcasting as {{name}}
+</p>
 <form action="/chat/" method="post">
   {% csrf_token %}
   {{ form }}

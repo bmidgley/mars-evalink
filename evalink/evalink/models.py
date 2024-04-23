@@ -18,7 +18,10 @@ class Hardware(models.Model):
     name = models.CharField(max_length=255, db_index=True)
     hardware_type = models.IntegerField(unique=False)
     station_type = models.CharField(max_length=255)
-
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['station_type', 'hardware_type'], name='unique_station_type_hardware_type'),
+        ]
 class Station(models.Model):
     station_profile = models.ForeignKey(StationProfile, on_delete=models.SET_NULL, null=True, db_index=True)
     last_position = models.ForeignKey("PositionLog", related_name='last_position', on_delete=models.SET_NULL, null=True, db_index=True)
