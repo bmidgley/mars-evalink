@@ -41,7 +41,7 @@ def process_message(message):
             except django.db.utils.IntegrityError as e:
                 print(e)
                 return
-            print(f'adding station {station} at {time} because there was nothing with number {number}')
+            print(f'adding new station {station} at {time} number {number}')
         station.updated_at = time
         station.name = payload['longname'] or 'blank'
         station.name = station.name.replace("\x00", "")
@@ -49,7 +49,7 @@ def process_message(message):
         return
 
     if station == None:
-        print(f'skipping this message because we do not know the station: {message}')
+        # print(f'skipping this message because we do not know the station: {message}')
         return
 
     if station.features == None: station.features = {
@@ -124,7 +124,7 @@ def process_message(message):
 
     if message['type'] == 'text':
         text = payload.get('text').replace("\x00", "")
-        print(f'@@text message {text}')
+        print(f'@@text "{text}"')
         text_log = TextLog(
             station=station,
             position_log=station.last_position,
