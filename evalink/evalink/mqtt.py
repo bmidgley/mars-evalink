@@ -5,7 +5,7 @@ import json
 from . import handler
 
 def on_connect(client, _userdata, _flags, _rc):
-    client.subscribe("msh/+/json/#")
+    client.subscribe(os.getenv('MQTT_TOPIC'))
 
 def on_disconnect(_client, _userdata, _rc):
     # print("on_disconnect?")
