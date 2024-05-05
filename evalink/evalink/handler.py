@@ -10,7 +10,7 @@ def process_message(message):
     payload = message['payload']
     tz = pytz.timezone("US/Mountain")
     timezone.now()
-    time = datetime.fromtimestamp(message['timestamp'], tz)
+    time = datetime.now(tz)
 
     station = Station.objects.filter(hardware_number=number).first()
 

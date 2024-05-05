@@ -6,6 +6,7 @@ from django.shortcuts import render
 from dotenv import load_dotenv
 from .forms import ChatForm
 import paho.mqtt.publish as publish
+import paho.mqtt.client as mqtt
 import os
 import json
 from . import handler
@@ -37,15 +38,14 @@ def chat(request):
             message = request.user.username + ': '
             message += form.cleaned_data['message']
             send_message = {'channel': 0, 'from': gateway_node_number, 'payload': message, 'type': 'sendtext'}
-            tls = None #os.getenv('MQTT_TLS')
             data = json.dumps(send_message)
-            topic = "msh/2/json/mqtt/"
-            publish.single(topic, data,
-                hostname=os.getenv('MQTT_SERVER'),
-                port=int(os.getenv('MQTT_PORT')),
-                auth = {'username':os.getenv('MQTT_USER'), 'password':os.getenv('MQTT_PASSWORD')},
-                tls=tls,
-                )
+            topic = "msh/US/2/json/mqtt/"
+            client = mqtt.Client()
+            if os.getenv('MQTT_TLS'): client.tls_set()
+            client.username_pw_set(username=os.getenv('MQTT_USER'), password=os.getenv('MQTT_PASSWORD'))
+            client.connect(os.getenv('MQTT_SERVER'), int(os.getenv('MQTT_PORT')), 60)
+            client.publish(topic, data)
+            client.disconnect()
             # do not process the message now or it will appear as a duplicate when it's seen on the network
             # timestamp = int(datetime.timestamp(datetime.now()))
             # text_message = {'channel': 0, 'from': gateway_node_number, 'id': timestamp, 'payload': {'text': message}, 'timestamp': timestamp, 'type': 'text'}
