@@ -17,7 +17,10 @@ def on_message(_client, _userdata, msg):
     if not verify(message, 'payload'): return
     if not verify(message, 'timestamp'): return
     if not verify(message, 'from'): return
-    handler.process_message(message)
+    try:
+        handler.process_message(message)
+    except Exception as error:
+        print(f'handler failed to process {message}: {error}')
 
 def verify(message, field):
     return field in message

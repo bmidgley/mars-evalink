@@ -118,6 +118,7 @@ def process_message(message):
         station.features["properties"]["battery_level"] = telemetry_log.battery_level or station.features["properties"]["battery_level"]
         station.features["properties"]["voltage"] = telemetry_log.voltage or station.features["properties"]["voltage"]
         station.features["properties"]["current"] = telemetry_log.current or station.features["properties"]["current"]
+        station.updated_at = time
         station.save()
         log_measurements(station, station.features, time)
         return
