@@ -96,6 +96,7 @@ def process_message(message):
         station.features["properties"]["ground_speed"] = position_log.ground_speed or station.features["properties"]["ground_speed"]
         station.features["properties"]["ground_track"] = position_log.ground_track or station.features["properties"]["ground_track"]
         station.last_position = position_log
+        station.updated_at = time
         station.save()
         log_measurements(station, station.features, time)
         return
@@ -138,6 +139,7 @@ def process_message(message):
             "text": text_log.text,
             "coordinates": station.features["geometry"].get("coordinates"),
             "updated_at": iso_time(message['timestamp']) })
+        station.updated_at = time
         station.save()
         log_measurements(station, station.features, time)
         return
