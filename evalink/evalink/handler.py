@@ -95,6 +95,7 @@ def process_message(message):
         station.features["properties"]["altitude"] = position_log.altitude or station.features["properties"]["altitude"]
         station.features["properties"]["ground_speed"] = position_log.ground_speed or station.features["properties"]["ground_speed"]
         station.features["properties"]["ground_track"] = position_log.ground_track or station.features["properties"]["ground_track"]
+        station.features["properties"]["node_type"] = station.hardware.station_type
         station.last_position = position_log
         station.updated_at = time
         station.save()
@@ -119,6 +120,7 @@ def process_message(message):
         station.features["properties"]["battery_level"] = telemetry_log.battery_level or station.features["properties"]["battery_level"]
         station.features["properties"]["voltage"] = telemetry_log.voltage or station.features["properties"]["voltage"]
         station.features["properties"]["current"] = telemetry_log.current or station.features["properties"]["current"]
+        station.features["properties"]["node_type"] = station.hardware.station_type
         station.updated_at = time
         station.save()
         log_measurements(station, station.features, time)
