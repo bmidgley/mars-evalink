@@ -540,14 +540,11 @@
                 return feature;
             });
 
-            let messages = JSON.parse(localStorage.getItem("messages"));
-            let message;
-            if(messages.length && feature) {
-                message = messages.find(entry=> entry.name == feature.values_.name);
-            }
-
             if (feature) {
                 const coordinates = feature.getGeometry().getCoordinates();
+                const newMessages = feature.values_.texts.slice(-2)
+                const message1 = newMessages.pop()
+                const message2 = newMessages.pop()
 
                 const popupContent = `<div class="popup">
                     <div class="close-btn" onclick="closeOverlay()">×</div>
@@ -567,15 +564,13 @@
                     </div>
 
                     <div class="tab-content" id="Message1">
-                        <div>${message ? message.content : "Message 1"}</div>
+                        <div>${message1 ? message1.text : "-"}</div>
                     </div>
 
                     <div class="tab-content" id="Message2">
-                        <div>Message 2</div>
+                        <div>${message2 ? message2.text : "-"}</div>
                     </div>
                 </div>`;
-                // const content = ``;
-                
 
                 overlay.getElement().innerHTML = popupContent;
                 overlay.setPosition(coordinates);
