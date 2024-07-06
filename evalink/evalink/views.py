@@ -32,6 +32,22 @@ def features(request):
 @login_required
 def chat(request):
     gateway_node_number = int(os.getenv('MQTT_NODE_NUMBER'))
+
+    message = request.GET.get('message')
+    if message:
+        message = request.user.username + ': ' + message
+        send_message = {'channel': 0, 'from': gateway_node_number, 'payload': message, 'type': 'sendtext'}
+        data = json.dumps(send_message)
+        topic = f'{os.getenv("MQTT_TOPIC")}/2/json/mqtt/'
+        client = mqtt.Client()
+        if os.getenv('MQTT_TLS'): client.tls_set()
+        client.username_pw_set(username=os.getenv('MQTT_USER'), password=os.getenv('MQTT_PASSWORD'))
+        client.connect(os.getenv('MQTT_SERVER'), int(os.getenv('MQTT_PORT')), 60)
+        client.publish(topic, data)
+        print("\n", topic, data)
+        client.disconnect()
+        return JsonResponse({"sent": "ok"}, json_dumps_params={'indent': 2})
+
     if request.method == "POST":
         form = ChatForm(request.POST)
         if form.is_valid():
@@ -39,7 +55,7 @@ def chat(request):
             message += form.cleaned_data['message']
             send_message = {'channel': 0, 'from': gateway_node_number, 'payload': message, 'type': 'sendtext'}
             data = json.dumps(send_message)
-            topic = "msh/US/2/json/mqtt/"
+            topic = f'{os.getenv("MQTT_TOPIC")}/2/json/mqtt/'
             client = mqtt.Client()
             if os.getenv('MQTT_TLS'): client.tls_set()
             client.username_pw_set(username=os.getenv('MQTT_USER'), password=os.getenv('MQTT_PASSWORD'))

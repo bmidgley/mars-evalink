@@ -884,30 +884,13 @@
 
         let names = ['Astro_a02', 'Astro_a04', 'Hab1', 'Infra_i03', 'SolarCan1', 'Infra_i01', 'Infra_i02', 'Infra_i04', 'Infra_i05', 'SolarCan2', 'Astro_a03'];
         // message update
-        document.getElementById("message-post").onsubmit = (e) => {
+        document.getElementById("message-post").onsubmit = async (e) => {
             e.preventDefault();
             let value = document.getElementById("form-control").value;
-            let messages = JSON.parse(localStorage.getItem("messages"));
-
-            let message;
-            if(messages.length) {
-                let { name } = messages[messages.length - 1];
-                let index = names.indexOf(name);
-                let nextIndex = index != names.length - 1 ? index++ : 0;
-
-                message = {
-                    name:names[nextIndex],
-                    content:value
-                }
-            } else {
-                message = {
-                    name:names[0],
-                    content:value
-                }
-            }
-           
-            messages.push(message);
-            localStorage.setItem("messages", JSON.stringify(messages));
+            const response = await fetch("/chat?message=" + encodeURIComponent(value));
+            const data = await response.json();
+            document.getElementById("form-control").value = "";
+            console.log(data);
         }
 
         function getFeaturesNames() {
