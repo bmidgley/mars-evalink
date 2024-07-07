@@ -31,7 +31,7 @@ def features(request):
 
 @login_required
 def texts(request):
-    text_messages = TextLog.objects.all().order_by('-updated_at')[:100:1][::-1]
+    text_messages = TextLog.objects.all().order_by('-updated_at')[:100:-1]
     return JsonResponse([text_message.serialize() for text_message in text_messages], safe=False, json_dumps_params={'indent': 2})
 
 @login_required
