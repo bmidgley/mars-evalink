@@ -73,6 +73,5 @@ def chat(request):
             # handler.process_message(text_message)
 
     form = ChatForm()
-    past = date.today() - timedelta(days = 1)
-    texts = TextLog.objects.filter(updated_at__gt = past).order_by('-updated_at').all()
+    texts = TextLog.objects.all().order_by('-updated_at')[:20:1]
     return render(request, "chat.html", {"form": form, "texts": texts, "name": request.user.username})
