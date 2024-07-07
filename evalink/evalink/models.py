@@ -71,6 +71,7 @@ class TextLog(models.Model):
     def serialize(self):
         return {
             "id": self.id,
+            "stataion_id": self.station_id,
             "station": self.station.name,
             "text": self.text,
             "position": [getattr(self.position_log, 'latitude', None),getattr(self.position_log, 'longitude', None)],
