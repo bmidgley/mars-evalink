@@ -68,6 +68,14 @@ class TextLog(models.Model):
     text = models.TextField(db_index=True)
     serial_number = models.BigIntegerField(db_index=True, unique=True)
     updated_at = models.DateTimeField(null=False, db_index=True)
+    def serialize(self):
+        return {
+            "id": self.id,
+            "station": self.station.name,
+            "text": self.text,
+            "position": [getattr(self.position_log, 'latitude', None),getattr(self.position_log, 'longitude', None)],
+            "updated_at": self.updated_at
+        }
 
 class NeighborLog(models.Model):
     station = models.ForeignKey(Station, on_delete=models.CASCADE, db_index=True)

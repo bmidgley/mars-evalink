@@ -24,5 +24,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("accounts/", include("django.contrib.auth.urls")),
     path('features.json', views.features, name='features'),
+    path('texts.json', views.texts, name='texts'),
     path('chat/', views.chat, name='chat')
 ]
