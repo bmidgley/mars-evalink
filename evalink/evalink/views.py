@@ -2,6 +2,7 @@ from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
 from evalink.models import *
 from datetime import date, timedelta, datetime
+from django.utils.dateparse import parse_date
 from django.shortcuts import render
 from dotenv import load_dotenv
 from .forms import ChatForm
@@ -33,6 +34,32 @@ def features(request):
 def texts(request):
     text_messages = TextLog.objects.all().order_by('-updated_at')[:100:-1]
     return JsonResponse([text_message.serialize() for text_message in text_messages], safe=False, json_dumps_params={'indent': 2})
+
+@login_required
+def path(request):
+    number = request.GET.get('number')
+    date_str = request.GET.get('date')
+    if date_str:
+        before_date = parse_date(date_str)
+    else:
+        before_date = date.today()
+    result = {'name': None, 'last_position_time': None, 'waypoints': [], 'points': []}
+    station = Station.objects.filter(hardware_number=number).first()
+    if station:
+        result['name'] = station.name
+        position_log = PositionLog.objects.filter(station=station,updated_at__lte=before_date).order_by('-updated_at').first()
+        if position_log:
+            result['last_position_time'] = position_log.updated_at
+            found_date = position_log.updated_at.date()
+            position_logs = PositionLog.objects.filter(station=station, updated_at__date=found_date).order_by('updated_at').all()
+            for log in position_logs:
+                result['points'].append({'latitude': log.latitude, 'longitude': log.longitude, 'altitude': log.altitude, 'updated_at': log.updated_at})
+            text_logs = TextLog.objects.filter(station=station, updated_at__date=found_date).order_by('updated_at').all()
+            for text in text_logs:
+                print(text.text)
+                if text.position_log:
+                    result['waypoints'].append({'latitude': text.position_log.latitude, 'longitude': text.position_log.longitude, 'altitude': text.position_log.altitude, 'updated_at': text.updated_at, 'text': text.text})
+    return JsonResponse(result, json_dumps_params={'indent': 2})
 
 @login_required
 def chat(request):
