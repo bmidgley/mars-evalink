@@ -44,7 +44,7 @@ def path(request):
     id = request.GET.get('id')
     station = Station.objects.filter(id=id).first()
     if station == None: return HttpResponseNotFound("not found")
-    before_date = localdate(request.GET.get('before_date'), date.today())
+    before_date = localdate(request.GET.get('before_date'), date.today() + timedelta(days = 1))
     after_date = localdate(request.GET.get('after_date'), None)
     result = {'id': station.id, 'name': station.name, 'date': None, 'waypoints': [], 'points': []}
     if after_date:
