@@ -1,12 +1,11 @@
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponseNotFound
 from django.contrib.auth.decorators import login_required
 from evalink.models import *
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta
 from django.utils.dateparse import parse_date
 from django.shortcuts import render
 from dotenv import load_dotenv
 from .forms import ChatForm
-import paho.mqtt.publish as publish
 import paho.mqtt.client as mqtt
 import os
 import json
@@ -24,9 +23,12 @@ def features(request):
         "type": "FeatureCollection",
         "features": [],
     }
-    past = date.today() - timedelta(days = 1)
-    for station in Station.objects.filter(updated_at__gt = past).order_by('id').all():
+    past = date.today() - timedelta(days = 5)
+    for station in Station.objects.filter(updated_at__gt = past).order_by('name').all():
         if station.features and 'geometry' in station.features and 'coordinates' in station.features['geometry']:
+            station.features['properties']['hardware_number'] = station.hardware_number
+            station.features['properties']['hardware_node'] = station.hardware_node
+            station.features['properties']['id'] = station.id
             data["features"].append(station.features)
     return JsonResponse(data, json_dumps_params={'indent': 2})
 
@@ -37,28 +39,35 @@ def texts(request):
 
 @login_required
 def path(request):
-    number = request.GET.get('number')
-    date_str = request.GET.get('date')
-    if date_str:
-        before_date = parse_date(date_str)
+    id = request.GET.get('id')
+    station = Station.objects.filter(id=id).first()
+    if station == None: return HttpResponseNotFound("not found")
+    before_date_str = request.GET.get('before_date')
+    if before_date_str:
+        before_date = parse_date(before_date_str)
     else:
         before_date = date.today()
-    result = {'name': None, 'last_position_time': None, 'waypoints': [], 'points': []}
-    station = Station.objects.filter(hardware_number=number).first()
-    if station:
-        result['name'] = station.name
+    after_date_str = request.GET.get('after_date')
+    if after_date_str:
+        after_date = parse_date(after_date_str)
+    else:
+        after_date = None
+    result = {'id': station.id, 'name': station.name, 'last_position_time': None, 'waypoints': [], 'points': []}
+    if after_date:
+        position_log = PositionLog.objects.filter(station=station,updated_at__gt=after_date).order_by('updated_at').first()
+    else:
         position_log = PositionLog.objects.filter(station=station,updated_at__lte=before_date).order_by('-updated_at').first()
-        if position_log:
-            result['last_position_time'] = position_log.updated_at
-            found_date = position_log.updated_at.date()
-            position_logs = PositionLog.objects.filter(station=station, updated_at__date=found_date).order_by('updated_at').all()
-            for log in position_logs:
-                result['points'].append({'latitude': log.latitude, 'longitude': log.longitude, 'altitude': log.altitude, 'updated_at': log.updated_at})
-            text_logs = TextLog.objects.filter(station=station, updated_at__date=found_date).order_by('updated_at').all()
-            for text in text_logs:
-                print(text.text)
-                if text.position_log:
-                    result['waypoints'].append({'latitude': text.position_log.latitude, 'longitude': text.position_log.longitude, 'altitude': text.position_log.altitude, 'updated_at': text.updated_at, 'text': text.text})
+    if position_log:
+        result['last_position_time'] = position_log.updated_at
+        found_date = position_log.updated_at.date()
+        position_logs = PositionLog.objects.filter(station=station, updated_at__date=found_date).order_by('updated_at').all()
+        for log in position_logs:
+            result['points'].append({'latitude': log.latitude, 'longitude': log.longitude, 'altitude': log.altitude, 'updated_at': log.updated_at})
+        text_logs = TextLog.objects.filter(station=station, updated_at__date=found_date).order_by('updated_at').all()
+        for text in text_logs:
+            print(text.text)
+            if text.position_log:
+                result['waypoints'].append({'latitude': text.position_log.latitude, 'longitude': text.position_log.longitude, 'altitude': text.position_log.altitude, 'updated_at': text.updated_at, 'text': text.text})
     return JsonResponse(result, json_dumps_params={'indent': 2})
 
 @login_required
