@@ -46,14 +46,14 @@ def path(request):
     if station == None: return HttpResponseNotFound("not found")
     before_date = localdate(request.GET.get('before_date'), date.today())
     after_date = localdate(request.GET.get('after_date'), None)
-    result = {'id': station.id, 'name': station.name, 'last_position_time': None, 'waypoints': [], 'points': []}
+    result = {'id': station.id, 'name': station.name, 'date': None, 'waypoints': [], 'points': []}
     if after_date:
         position_log = PositionLog.objects.filter(station=station,updated_at__gt=after_date).order_by('updated_at').first()
     else:
         position_log = PositionLog.objects.filter(station=station,updated_at__lt=before_date).order_by('-updated_at').first()
     if position_log:
-        result['last_position_time'] = position_log.updated_at
         found_date = position_log.updated_at.astimezone(timezone.get_current_timezone()).date()
+        result['date'] = found_date
         position_logs = PositionLog.objects.filter(station=station, updated_at__date=found_date).order_by('updated_at').all()
         for log in position_logs:
             result['points'].append({'latitude': log.latitude, 'longitude': log.longitude, 'altitude': log.altitude, 'updated_at': log.updated_at})
