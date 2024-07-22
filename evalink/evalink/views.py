@@ -69,7 +69,6 @@ def localdate(my_date, default):
     my_naive_datetime = datetime.combine(my_date, datetime.min.time())
     tz = timezone.get_current_timezone()
     my_aware_datetime = timezone.make_aware(my_naive_datetime, timezone=tz)
-    print(my_aware_datetime)
     return my_aware_datetime
 
 @login_required

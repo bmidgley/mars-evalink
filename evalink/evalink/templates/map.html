@@ -314,6 +314,7 @@
 
                     features.forEach(feature => {
 
+                        const id = feature.get('id');
                         const name = feature.get('name');
                         const time = feature.get('time');
                         const coordinates = feature.getGeometry().getCoordinates();
@@ -323,13 +324,8 @@
                                 markerData[name] = {
                                     times: [],
                                     coordinates: [],
+                                    id: id,
                                 };
-                            }
-
-                            // Check if the time is not already present, then add it
-                            if (!markerData[name].times.includes(time)) {
-                                markerData[name].times.push(time);
-                                markerData[name].coordinates.push(coordinates);
                             }
                         }
 
@@ -359,8 +355,9 @@
                 markerItem.className = 'marker-item';
                 markerItem.textContent = name;
                 markerItem.addEventListener('click', function () {
+                    // activate commonpanel
+                    populatePath(name);
                     zoomToMarker(name);
-                    showTimeSlider(name);
                     populateCrewDropdown(name);
                 });
                 markerList.appendChild(markerItem);
@@ -374,6 +371,16 @@
             });
 
             markerList.appendChild(downloadJsonButton);
+        }
+
+        async function populatePath(name) {
+            const response = await fetch("/path.json?id=" + markerData[name].id);
+            const data = await response.json();
+            for(const point of data.points) {
+                markerData[name].coordinates.push(ol.proj.fromLonLat([point.longitude, point.latitude]));
+                markerData[name].times.push(point.updated_at);
+            }
+            showTimeSlider(name)
         }
 
         function showTimeSlider(name) {
@@ -802,7 +809,7 @@
             ddlCrews.innerHTML = '';
 
             const filteredCrew = deviceCrew.filter(item => item.device === deviceName);
-            console.log(filteredCrew);
+            // console.log(filteredCrew);
             // const isCrewIncluded = deviceCrew.some(item => item.crew === crew.name);
 
             const option = document.createElement('option');
