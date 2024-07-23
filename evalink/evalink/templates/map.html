@@ -209,6 +209,18 @@
             border: 1px solid #ccc;
             border-top: none;
         }
+
+        #bi-previous {
+            float: left;
+        }
+        #selected-time {
+            display: inline;
+        }
+        #bi-following {
+            float: right;
+        }
+
+
     </style>
 </head>
 
@@ -235,7 +247,15 @@
         </button>
         <br>
         <input type="range" class="form-control-range" id="time-slider" min="0" max="1" step="0.1" value="0">
-        <div id="selected-time"></div>
+        <div id="time-area">
+            <button id="previous-day" type="button" class="btn" title="Display previous day's tracks" onclick="populatePath(window.current_name, window.current_date, null)">
+                <span class="bi bi-previous"><<</span>
+            </button>
+            <div id="selected-time"></div>
+            <button id="following-day" type="button" class="btn" title="Display following day's tracks" onclick="populatePath(window.current_name, null, window.current_date)">
+                <span class="bi bi-next">>></span>
+            </button>
+        </div>
         <button id="emergency-button" title="Emergency Signal" onclick="sendEmergencySignal()">
             <img id="emergency-icon" src="https://img.icons8.com/ios-filled/50/000000/siren.png" height="30"
                 width="30" />
@@ -373,14 +393,22 @@
             markerList.appendChild(downloadJsonButton);
         }
 
-        async function populatePath(name) {
-            const response = await fetch("/path.json?id=" + markerData[name].id);
+        async function populatePath(name, before_date, after_date) {
+            request = "/path.json?id=" + markerData[name].id
+            if(before_date) request += "&before_date=" + before_date
+            if(after_date) request += "&after_date=" + after_date
+            console.log(request)
+            var response = await fetch(request);
             const data = await response.json();
+            markerData[name].coordinates = []
+            markerData[name].times = []
             for(const point of data.points) {
                 markerData[name].coordinates.push(ol.proj.fromLonLat([point.longitude, point.latitude]));
                 markerData[name].times.push(point.updated_at);
             }
             showTimeSlider(name)
+            window.current_name = name
+            window.current_date = data.date
         }
 
         function showTimeSlider(name) {

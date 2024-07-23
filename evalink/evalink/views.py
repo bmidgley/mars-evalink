@@ -48,9 +48,9 @@ def path(request):
     after_date = localdate(request.GET.get('after_date'), None)
     result = {'id': station.id, 'name': station.name, 'date': None, 'waypoints': [], 'points': []}
     if after_date:
-        position_log = PositionLog.objects.filter(station=station,updated_at__gt=after_date).order_by('updated_at').first()
+        position_log = PositionLog.objects.filter(station=station,updated_at__date__gt=after_date).order_by('updated_at').first()
     else:
-        position_log = PositionLog.objects.filter(station=station,updated_at__lt=before_date).order_by('-updated_at').first()
+        position_log = PositionLog.objects.filter(station=station,updated_at__date__lt=before_date).order_by('-updated_at').first()
     if position_log:
         found_date = position_log.updated_at.astimezone(timezone.get_current_timezone()).date()
         result['date'] = found_date
