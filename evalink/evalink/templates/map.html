@@ -394,6 +394,7 @@
         }
 
         async function populatePath(name, before_date, after_date) {
+            vectorTrackSource.clear();
             request = "/path.json?id=" + markerData[name].id
             if(before_date) request += "&before_date=" + before_date
             if(after_date) request += "&after_date=" + after_date
@@ -402,13 +403,21 @@
             const data = await response.json();
             markerData[name].coordinates = []
             markerData[name].times = []
+            var pointList = []
             for(const point of data.points) {
-                markerData[name].coordinates.push(ol.proj.fromLonLat([point.longitude, point.latitude]));
+                var projection = ol.proj.fromLonLat([point.longitude, point.latitude]);
+                pointList.push([point.longitude, point.latitude])
+                markerData[name].coordinates.push(projection);
                 markerData[name].times.push(point.updated_at);
             }
-            showTimeSlider(name)
-            window.current_name = name
-            window.current_date = data.date
+            var route = new ol.geom.LineString(pointList).transform('EPSG:4326', 'EPSG:3857');
+            var feature = new ol.Feature({
+                geometry : route,
+            });
+            vectorTrackSource.addFeature(feature);
+            showTimeSlider(name);
+            window.current_name = name;
+            window.current_date = data.date;
         }
 
         function showTimeSlider(name) {
@@ -545,6 +554,15 @@
             },
         });
 
+        const vectorTrackSource = new ol.source.Vector({
+            format: new ol.format.GeoJSON(),
+            strategy: ol.loadingstrategy.bbox,
+        });
+
+        const vectorTrackLayer = new ol.layer.Vector({
+            source: vectorTrackSource,
+        });
+
         const map = new ol.Map({
             target: 'map',
             controls: ol.control.defaults.defaults({
@@ -555,6 +573,7 @@
                     source: source,
                 }),
                 vectorLayer,
+                vectorTrackLayer,
             ],
             view: new ol.View({
                 center: ol.proj.fromLonLat([-110.7919148, 38.4065268]),
