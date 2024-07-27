@@ -99,6 +99,7 @@ class Campus(models.Model):
     mailing_address = models.TextField(null=True, blank=True)
     inner_geofence = models.ForeignKey(Geofence, related_name='inner_campus_set', on_delete=models.SET_NULL, null=True, db_index=True, blank=True)
     outer_geofence = models.ForeignKey(Geofence, related_name='outer_campus_set', on_delete=models.SET_NULL, null=True, db_index=True, blank=True)
+    time_zone = models.TextField(default='America/Denver')
     updated_at = models.DateTimeField(null=False, db_index=True)
 
 class Vehicle(models.Model):
