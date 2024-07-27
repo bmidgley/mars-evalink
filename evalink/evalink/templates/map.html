@@ -321,6 +321,29 @@
         let geojsonData;
         let deviceCrew = [];
 
+        async function checkTexts(firstRun) {
+            if(firstRun) window.seenTextId = 0;
+            var response = await fetch("/texts.json");
+            const messages = await response.json();
+            for(message of messages) {
+                if(window.seenTextId < message.id) {
+                    content = message.station + ': ' + message.text
+                    if (Notification.permission === "granted") {
+                        if(!firstRun) { new Notification(content) }
+                    } else if (Notification.permission !== "denied") {
+                        Notification.requestPermission().then((permission) => {
+                            if (permission === "granted") {
+                                new Notification(content)
+                            }
+                        });
+                    }
+                    window.seenTextId = message.id;
+                }
+            }
+        }
+        checkTexts(true)
+        setInterval(checkTexts, 5000);
+
         function updateGeoJSON() {
             fetch(geojsonUrl)
                 .then(response => response.json())
@@ -398,7 +421,6 @@
             request = "/path.json?id=" + markerData[name].id
             if(before_date) request += "&before_date=" + before_date
             if(after_date) request += "&after_date=" + after_date
-            console.log(request)
             var response = await fetch(request);
             const data = await response.json();
             markerData[name].coordinates = []
