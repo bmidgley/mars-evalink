@@ -9,6 +9,7 @@ from django.db.models import Q
 from dotenv import load_dotenv
 from .forms import ChatForm
 import paho.mqtt.client as mqtt
+import pytz
 import os
 import json
 import zoneinfo
@@ -121,3 +122,46 @@ def chat(request):
     form = ChatForm()
     texts = TextLog.objects.all().order_by('-updated_at')[:20:1]
     return render(request, "chat.html", {"form": form, "texts": texts, "name": request.user.username})
+
+@login_required
+def point(request):
+    if request.method != 'POST': return HttpResponseNotFound("not found")
+    user_id = request.user.id
+    username = request.user.username
+    tz = pytz.timezone("US/Mountain")
+    timezone.now()
+    time = datetime.now(tz)
+    json = json.loads(request.body)
+    latitude = json['latitude']
+    longitude = json['longitude']
+    altitude = json['altitude']
+    _color = json['color']
+    station = Station.objects.filter(hardware_number=user_id).first()
+    if station == None:
+        station_profile = StationProfile.objects.first()
+        if station_profile == None:
+            station_profile = StationProfile(name="default", configuration={"firmware": "2.2.17"}, compatible_firmwares=["2.2.17"])
+            station_profile.save()
+        hardware = Hardware.objects.filter(hardware_type=6).first()
+        if hardware == None:
+            hardware = Hardware(hardware_type=6, name='tbeam', station_type='infrastructure')
+            hardware.save()
+        station = Station(
+            hardware=hardware,
+            station_profile=station_profile,
+            hardware_number=user_id,
+            hardware_node='na',
+            station_type=hardware.station_type,
+            updated_at=time,
+            short_name=username)
+        station.save()
+    position_log = PositionLog(
+        station=station,
+        latitude=latitude,
+        longitude=longitude,
+        altitude=altitude,
+        ground_speed=0,
+        ground_track=0,
+        updated_at=time)
+    position_log.save()
+    return JsonResponse({"stored": "ok"}, json_dumps_params={'indent': 2})
