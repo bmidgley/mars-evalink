@@ -43,6 +43,9 @@ class EvaVehicleAdmin(admin.ModelAdmin):
 class EvaStationAdmin(admin.ModelAdmin):
     list_display = [f.name for f in EvaStation._meta.fields]
 
+class GeofenceAdmin(admin.ModelAdmin):
+    list_display = [f.name for f in Geofence._meta.fields]
+
 admin.site.register(Hardware, HardwareAdmin)
 admin.site.register(Station, StationAdmin)
 admin.site.register(StationProfile, StationProfileAdmin)
@@ -59,3 +62,4 @@ admin.site.register(Eva, EvaAdmin)
 admin.site.register(EvaCrewmember, EvaCrewmemberAdmin)
 admin.site.register(EvaVehicle, EvaVehicleAdmin)
 admin.site.register(EvaStation, EvaStationAdmin)
+admin.site.register(Geofence, GeofenceAdmin)

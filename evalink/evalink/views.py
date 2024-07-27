@@ -5,6 +5,7 @@ from evalink.models import *
 from datetime import date, timedelta, datetime
 from django.utils.dateparse import parse_date
 from django.shortcuts import render
+from django.db.models import Q
 from dotenv import load_dotenv
 from .forms import ChatForm
 import paho.mqtt.client as mqtt
@@ -44,17 +45,23 @@ def path(request):
     id = request.GET.get('id')
     station = Station.objects.filter(id=id).first()
     if station == None: return HttpResponseNotFound("not found")
-    before_date = localdate(request.GET.get('before_date'), date.today() + timedelta(days = 1))
+    campus = Campus.objects.first()
+    g = campus.inner_geofence
+    current = date.today() + timedelta(days = 1)
+    before_date = localdate(request.GET.get('before_date'), current)
     after_date = localdate(request.GET.get('after_date'), None)
     result = {'id': station.id, 'name': station.name, 'date': None, 'waypoints': [], 'points': []}
     if after_date:
-        position_log = PositionLog.objects.filter(station=station,updated_at__date__gt=after_date).order_by('updated_at').first()
+        position_log = PositionLog.objects.filter(station=station,updated_at__date__gt=after_date).filter(
+                                                  Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('updated_at').first()
     else:
-        position_log = PositionLog.objects.filter(station=station,updated_at__date__lt=before_date).order_by('-updated_at').first()
+        position_log = PositionLog.objects.filter(station=station,updated_at__date__lt=before_date).filter(
+                                                  Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('-updated_at').first()
     if position_log:
         found_date = position_log.updated_at.astimezone(timezone.get_current_timezone()).date()
         result['date'] = found_date
-        position_logs = PositionLog.objects.filter(station=station, updated_at__date=found_date).order_by('updated_at').all()
+        position_logs = PositionLog.objects.filter(station=station, updated_at__date=found_date).filter(
+                                                  Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('updated_at').all()
         for log in position_logs:
             result['points'].append({'latitude': log.latitude, 'longitude': log.longitude, 'altitude': log.altitude, 'updated_at': log.updated_at})
         text_logs = TextLog.objects.filter(station=station, updated_at__date=found_date).order_by('updated_at').all()
@@ -62,7 +69,7 @@ def path(request):
             if text.position_log:
                 result['waypoints'].append({'latitude': text.position_log.latitude, 'longitude': text.position_log.longitude, 'altitude': text.position_log.altitude, 'updated_at': text.updated_at, 'text': text.text})
     else:
-        result['date'] = before_date.date()
+        result['date'] = before_date
     return JsonResponse(result, json_dumps_params={'indent': 2})
 
 def localdate(my_date, default):

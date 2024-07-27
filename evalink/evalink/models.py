@@ -85,12 +85,20 @@ class NeighborLog(models.Model):
     rssi = models.FloatField()
     updated_at = models.DateTimeField(null=False, db_index=True)
 
+class Geofence(models.Model):
+    latitude1 = models.FloatField()
+    longitude1 = models.FloatField()
+    latitude2 = models.FloatField()
+    longitude2 = models.FloatField()
+
 class Campus(models.Model):
     name = models.CharField(max_length=64, db_index=True, null=False)
     latitude = models.FloatField()
     longitude = models.FloatField()
-    altitude = models.FloatField(null=True)
-    mailing_address = models.TextField(null=True)
+    altitude = models.FloatField(null=True, blank=True)
+    mailing_address = models.TextField(null=True, blank=True)
+    inner_geofence = models.ForeignKey(Geofence, related_name='inner_campus_set', on_delete=models.SET_NULL, null=True, db_index=True, blank=True)
+    outer_geofence = models.ForeignKey(Geofence, related_name='outer_campus_set', on_delete=models.SET_NULL, null=True, db_index=True, blank=True)
     updated_at = models.DateTimeField(null=False, db_index=True)
 
 class Vehicle(models.Model):

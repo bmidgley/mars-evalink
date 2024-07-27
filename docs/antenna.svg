@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg enable-background="new 0 0 24 24" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" xmlns:bx="https://boxy-svg.com">
+  <defs/>
+  <path d="M 11.877 6.696 L 17.614 22.638 L 6.139 22.638 L 11.877 6.696 Z" style="fill: rgb(216, 216, 216); stroke: rgb(0, 0, 0);" bx:shape="triangle 6.139 6.696 11.475 15.942 0.5 0 1@6606973a"/>
+  <ellipse style="fill: rgb(216, 216, 216); stroke: rgb(0, 0, 0);" cx="11.898" cy="5.627" rx="1.233" ry="1.22"/>
+  <line style="fill: rgb(216, 216, 216); stroke: rgb(0, 0, 0);" x1="17.114" y1="22.235" x2="7.929" y2="17.386"/>
+  <line style="fill: rgb(216, 216, 216); stroke: rgb(0, 0, 0);" x1="8.376" y1="17.054" x2="14.662" y2="13.765"/>
+  <line style="fill: rgb(216, 216, 216); stroke: rgb(0, 0, 0);" x1="14.243" y1="13.616" x2="10.356" y2="10.124"/>
+  <line style="fill: rgb(216, 216, 216); stroke: rgb(0, 0, 0);" x1="6.603" y1="22.305" x2="15.825" y2="17.131"/>
+  <line style="fill: rgb(216, 216, 216); stroke: rgb(0, 0, 0);" x1="15.436" y1="17.013" x2="9.309" y2="13.658"/>
+  <line style="fill: rgb(216, 216, 216); stroke: rgb(0, 0, 0);" x1="13.305" y1="10.218" x2="9.606" y2="13.416"/>
+</svg>
