@@ -595,39 +595,12 @@
             });
 
             if (feature) {
-                const coordinates = feature.getGeometry().getCoordinates();
-                const newMessages = feature.values_.texts.slice(-2)
-                const message1 = newMessages.pop()
-                const message2 = newMessages.pop()
+                name = feature.values_.name
 
-                const popupContent = `<div class="popup">
-                    <div class="close-btn" onclick="closeOverlay()">×</div>
-
-                    <div class="tab">
-                        <button class="tablinks" onclick="openCity(event, 'Content')">Content</button>
-                        <button class="tablinks" onclick="openCity(event, 'Message1')">Message 1</button>
-                        <button class="tablinks" onclick="openCity(event, 'Message2')">Message 2</button>
-                    </div>
-
-                    <div class="tab-content" id="Content">
-                        <span><b>Name: </b>${feature.values_.name}</span></br>
-                        <span><b>Label: </b>${feature.values_.label}</span></br>
-                        <span><b>Time: </b>${feature.values_.time}</span></br>
-                        <span><b>Hardware: </b>${feature.values_.hardware}</span></br>
-                        <span><b>Node Type: </b>${feature.values_.node_type}</span>
-                    </div>
-
-                    <div class="tab-content" id="Message1">
-                        <div>${message1 ? message1.text : ""}</div>
-                    </div>
-
-                    <div class="tab-content" id="Message2">
-                        <div>${message2 ? message2.text : ""}</div>
-                    </div>
-                </div>`;
-
-                overlay.getElement().innerHTML = popupContent;
-                overlay.setPosition(coordinates);
+                // activate commonpanel
+                populatePath(name);
+                zoomToMarker(name);
+                populateCrewDropdown(name);
             } 
         });
 
