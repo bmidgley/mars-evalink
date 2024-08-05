@@ -131,11 +131,11 @@ def point(request):
     tz = pytz.timezone("US/Mountain")
     timezone.now()
     time = datetime.now(tz)
-    json = json.loads(request.body)
-    latitude = json['latitude']
-    longitude = json['longitude']
-    altitude = json['altitude']
-    _color = json['color']
+    json_content = json.loads(request.body)
+    latitude = json_content['latitude']
+    longitude = json_content['longitude']
+    altitude = json_content.get('altitude', None)
+    _color = json_content.get('color', "#ff0000")
     station = Station.objects.filter(hardware_number=user_id).first()
     if station == None:
         station_profile = StationProfile.objects.first()
@@ -153,6 +153,28 @@ def point(request):
             hardware_node='na',
             station_type=hardware.station_type,
             updated_at=time,
+            features = {
+                "type": "Feature",
+                "properties": {
+                    "name": username,
+                    "label": username,
+                    "time": time.isoformat(),
+                    "hardware": hardware.hardware_type,
+                    "node_type": hardware.station_type,
+                    "altitude": altitude,
+                    "coordinates": [longitude, latitude],
+                    "ground_speed": 0,
+                    "ground_track": 0,
+                    "temperature": None,
+                    "relative_humidity": None,
+                    "barometric_pressure": None,
+                    "battery_level": None,
+                    "voltage": None,
+                    "current": None,
+                    "texts": [],
+                },
+                "geometry": { "type": "Point" },
+            },
             short_name=username)
         station.save()
     position_log = PositionLog(
@@ -164,4 +186,9 @@ def point(request):
         ground_track=0,
         updated_at=time)
     position_log.save()
+    station.features["geometry"]["coordinates"] = [longitude, latitude]
+    station.features["properties"]["altitude"] = altitude
+    station.last_position = position_log
+    station.updated_at = time
+    station.save()
     return JsonResponse({"stored": "ok"}, json_dumps_params={'indent': 2})
