@@ -432,7 +432,7 @@
 
         async function populatePath(name, before_date, after_date) {
             vectorTrackSource.clear();
-            request = "/path.json?id=" + markerData[name].id
+            var request = "/path.json?id=" + markerData[name].id
             if(before_date) request += "&before_date=" + before_date
             if(after_date) request += "&after_date=" + after_date
             var response = await fetch(request);
