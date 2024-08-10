@@ -70,7 +70,7 @@ def path(request):
             if text.position_log:
                 result['waypoints'].append({'latitude': text.position_log.latitude, 'longitude': text.position_log.longitude, 'altitude': text.position_log.altitude, 'updated_at': text.updated_at, 'text': text.text})
     else:
-        result['date'] = before_date.date()
+        result['date'] = before_date.isoformat()[0:10]
     return JsonResponse(result, json_dumps_params={'indent': 2})
 
 def localdate(my_date, default):
