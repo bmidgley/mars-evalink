@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import os
 import json
 from . import handler
+import traceback
 
 def on_connect(client, _userdata, _flags, _rc):
     client.subscribe(f'{os.getenv("MQTT_TOPIC")}/+/json/#')
@@ -20,7 +21,7 @@ def on_message(_client, _userdata, msg):
     try:
         handler.process_message(message)
     except Exception as error:
-        print(f'handler failed to process {message}: {error}')
+        print(f'handler failed to process {message}: {error} {traceback.print_tb(error.__traceback__)}')
 
 def verify(message, field):
     return field in message

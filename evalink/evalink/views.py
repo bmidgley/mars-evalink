@@ -49,8 +49,8 @@ def path(request):
     campus = Campus.objects.first()
     g = campus.inner_geofence
     current = date.today() + timedelta(days = 1)
-    before_date = localdate(request.GET.get('before_date'), current)
-    after_date = localdate(request.GET.get('after_date'), None)
+    before_date = localdate("before", request.GET.get('before_date'), current)
+    after_date = localdate("after", request.GET.get('after_date'), None)
     result = {'id': station.id, 'name': station.name, 'date': None, 'waypoints': [], 'points': []}
     if after_date:
         position_log = PositionLog.objects.filter(station=station,updated_at__date__gt=after_date).filter(
@@ -73,8 +73,10 @@ def path(request):
         result['date'] = before_date.isoformat()[0:10]
     return JsonResponse(result, json_dumps_params={'indent': 2})
 
-def localdate(my_date, default):
-    if my_date == None: return default
+def localdate(label, my_date, default):
+    if my_date == None:
+        # print(f'{label} blankinput: using {default}')
+        return default
     if isinstance(my_date, str): my_date = parse_date(my_date)
     my_naive_datetime = datetime.combine(my_date, datetime.min.time())
     tz = timezone.get_current_timezone()

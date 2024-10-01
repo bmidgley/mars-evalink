@@ -45,6 +45,9 @@ def process_message(message):
         station.updated_at = time
         station.name = payload['longname'] or 'blank'
         station.name = station.name.replace("\x00", "")
+        if station.features == None: station.features = {}
+        if "properties" not in station.features: station.features["properties"] = {}
+        station.features["properties"]["name"] = station.name
         station.save()
         return
 
@@ -92,6 +95,7 @@ def process_message(message):
             ground_track=ground_track,
             updated_at=time)
         position_log.save()
+        if "geometry" not in station.features: station.features["geometry"] = {}
         station.features["geometry"]["coordinates"] = [lon, lat]
         station.features["properties"]["altitude"] = position_log.altitude or station.features["properties"]["altitude"]
         station.features["properties"]["ground_speed"] = position_log.ground_speed or station.features["properties"]["ground_speed"]
@@ -115,12 +119,12 @@ def process_message(message):
             current=payload.get('current'),
             updated_at=time)
         telemetry_log.save()
-        station.features["properties"]["temperature"] = telemetry_log.temperature or station.features["properties"]["temperature"]
-        station.features["properties"]["relative_humidity"] = telemetry_log.relative_humidity or station.features["properties"]["relative_humidity"]
-        station.features["properties"]["barometric_pressure"] = telemetry_log.barometric_pressure or station.features["properties"]["barometric_pressure"]
-        station.features["properties"]["battery_level"] = telemetry_log.battery_level or station.features["properties"]["battery_level"]
-        station.features["properties"]["voltage"] = telemetry_log.voltage or station.features["properties"]["voltage"]
-        station.features["properties"]["current"] = telemetry_log.current or station.features["properties"]["current"]
+        station.features["properties"]["temperature"] = telemetry_log.temperature or station.features["properties"].get("temperature")
+        station.features["properties"]["relative_humidity"] = telemetry_log.relative_humidity or station.features["properties"].get("relative_humidity")
+        station.features["properties"]["barometric_pressure"] = telemetry_log.barometric_pressure or station.features["properties"].get("barometric_pressure")
+        station.features["properties"]["battery_level"] = telemetry_log.battery_level or station.features["properties"].get("battery_level")
+        station.features["properties"]["voltage"] = telemetry_log.voltage or station.features["properties"].get("voltage")
+        station.features["properties"]["current"] = telemetry_log.current or station.features["properties"].get("current")
         station.features["properties"]["node_type"] = station.hardware.station_type
         station.updated_at = time
         station.save()
