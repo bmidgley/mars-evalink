@@ -27,8 +27,8 @@ def features(request):
         "type": "FeatureCollection",
         "features": [],
     }
-    past = date.today() - timedelta(days = 90)
-    for station in Station.objects.filter(updated_at__gt = past).order_by('name').all():
+    top_stations = Station.objects.order_by('-updated_at').all()[:35]
+    for station in  sorted(top_stations, key=lambda x: x.name.lower(), reverse=False):
         if station.features and 'geometry' in station.features and 'coordinates' in station.features['geometry']:
             station.features['properties']['hardware_number'] = station.hardware_number
             station.features['properties']['hardware_node'] = station.hardware_node
