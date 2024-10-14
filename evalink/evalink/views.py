@@ -29,7 +29,7 @@ def features(request):
     }
     top_stations = Station.objects.order_by('-updated_at').all()[:35]
     for station in  sorted(top_stations, key=lambda x: x.name.lower(), reverse=False):
-        if station.features and 'geometry' in station.features and 'coordinates' in station.features['geometry']:
+        if station.features and 'geometry' in station.features and 'coordinates' in station.features['geometry'] and 'type' in station.features['geometry']:
             station.features['properties']['hardware_number'] = station.hardware_number
             station.features['properties']['hardware_node'] = station.hardware_node
             station.features['properties']['id'] = station.id
