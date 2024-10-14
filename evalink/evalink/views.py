@@ -29,12 +29,20 @@ def features(request):
     }
     top_stations = Station.objects.order_by('-updated_at').all()[:35]
     for station in  sorted(top_stations, key=lambda x: x.name.lower(), reverse=False):
-        if station.features and 'geometry' in station.features and 'coordinates' in station.features['geometry'] and 'type' in station.features['geometry']:
+        if fully_populated(station.features):
             station.features['properties']['hardware_number'] = station.hardware_number
             station.features['properties']['hardware_node'] = station.hardware_node
             station.features['properties']['id'] = station.id
             data["features"].append(station.features)
     return JsonResponse(data, json_dumps_params={'indent': 2})
+
+def fully_populated(features):
+    if not features: return False
+    if not 'geometry' in features: return False
+    if not 'coordinates' in features['geometry']: return False
+    if not 'type' in features['geometry']: return False
+    if features['geometry']['coordinates'] == [0, 0]: return False
+    return True
 
 @login_required
 def texts(request):
