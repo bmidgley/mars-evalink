@@ -266,7 +266,8 @@
     </div>
 
     <div id="message-tab" class="hidden">
-        <h3>Message</h3>
+        <h3>Messages</h3>
+        <ul id="message-list"></ul>
         <form class="form" method="post" id="message-post">
             <input type="text" name="message" class="form-control" id="form-control" placeholder="Message ..." required>
             
@@ -339,9 +340,26 @@
             if(firstRun) window.seenTextId = 0;
             var response = await fetch("/texts.json");
             const messages = await response.json();
+            const message_list_el = document.getElementById("message-list");
+            message_list_el.innerHTML = "";
             for(message of messages) {
+                const li = document.createElement("li");
+                const markerItem = document.createElement("div");
+                const markerText = document.createElement("div");
+                markerItem.innerHTML = message.station;
+                markerItem.className = "marker-list";
+                markerItem.addEventListener('click', function () {
+                    // activate commonpanel
+                    populatePath(name);
+                    zoomToMarker(name);
+                    populateCrewDropdown(name);
+                });
+                li.appendChild(markerItem);
+                markerText.innerHTML = message.text;
+                li.appendChild(markerText);
+                message_list_el.appendChild(li);
                 if(window.seenTextId < message.id) {
-                    content = message.station + ': ' + message.text
+                    const content = message.station + ': ' + message.text;
                     if (Notification.permission === "granted") {
                         if(!firstRun) { new Notification(content) }
                     } else if (Notification.permission !== "denied") {
@@ -356,7 +374,7 @@
             }
         }
         checkTexts(true)
-        setInterval(checkTexts, 5000);
+        setInterval(checkTexts, 15000);
 
         function updateGeoJSON() {
             fetch(geojsonUrl)
