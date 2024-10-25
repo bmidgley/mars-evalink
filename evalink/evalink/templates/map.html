@@ -350,9 +350,9 @@
                 markerItem.className = "marker-list";
                 markerItem.addEventListener('click', function () {
                     // activate commonpanel
-                    populatePath(name);
-                    zoomToMarker(name);
-                    populateCrewDropdown(name);
+                    populatePath(message.station);
+                    zoomToMarker(message.station);
+                    populateCrewDropdown(message.station);
                 });
                 li.appendChild(markerItem);
                 markerText.innerHTML = message.text;
