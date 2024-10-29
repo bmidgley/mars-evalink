@@ -235,6 +235,7 @@
 
     <div id="time-slider-container">
         <h3 id="nameTimeSlider"></h3>
+        <div id="batteryTimeSlider"></div>
         <select id="ddlCrews"></select>
         <button type="button" class="btn btn-success" title="Add Crew" onclick="addCrew()">
             <span class="bi bi-person-plus"></span>
@@ -411,6 +412,7 @@
                         const id = feature.get('id');
                         const name = feature.get('name');
                         const time = feature.get('time');
+                        const battery = feature.get('battery_level')
                         const coordinates = feature.getGeometry().getCoordinates();
 
                         if (name && time) {
@@ -419,6 +421,7 @@
                                     times: [],
                                     coordinates: [],
                                     id: id,
+                                    battery: battery,
                                 };
                             }
                         }
@@ -496,10 +499,12 @@
         function showTimeSlider(name) {
             const times = markerData[name].times;
             const coordinates = markerData[name].coordinates;
+            const battery = markerData[name].battery;
             const timeSliderContainer = document.getElementById('time-slider-container');
             const timeSlider = document.getElementById('time-slider');
             const selectedTime = document.getElementById('selected-time');
             document.getElementById('nameTimeSlider').innerHTML = name;
+            document.getElementById('batteryTimeSlider').innerHTML = battery + "%";
 
             const emergencyIcon = document.getElementById('emergency-icon');
             if (emergencyList.includes(name)) {
