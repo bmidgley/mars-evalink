@@ -27,7 +27,7 @@ def features(request):
         "type": "FeatureCollection",
         "features": [],
     }
-    top_stations = Station.objects.order_by('-updated_at').all()[:35]
+    top_stations = Station.objects.order_by('-updated_at').all()[:55]
     for station in  sorted(top_stations, key=lambda x: x.name.lower(), reverse=False):
         if fully_populated(station.features):
             station.features['properties']['hardware_number'] = station.hardware_number

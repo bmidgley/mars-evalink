@@ -342,18 +342,31 @@
             const messages = await response.json();
             const message_list_el = document.getElementById("message-list");
             message_list_el.innerHTML = "";
-            for(message of messages) {
+            for(const message of messages) {
                 const li = document.createElement("li");
                 const markerItem = document.createElement("div");
                 const markerText = document.createElement("div");
                 markerItem.innerHTML = message.station;
                 markerItem.className = "marker-list";
                 markerItem.addEventListener('click', function () {
-                    // activate commonpanel
-                    populatePath(message.station);
-                    zoomToMarker(message.station);
-                    populateCrewDropdown(message.station);
+                    const name = message.station;
+                    if(markerData[name]) {
+                        // activate commonpanel
+                        populatePath(name);
+                        zoomToMarker(name);
+                        populateCrewDropdown(name);
+                    }
                 });
+                if(message["position"][0] != null) {
+                    markerText.addEventListener('click', function () {
+                        const coordinates = [100000 * message["position"][1], 100000 * message["position"][0]]
+                        map.getView().animate({
+                            center: coordinates,
+                            zoom: 15,
+                            duration: 1000,
+                        });
+                    })
+                }
                 li.appendChild(markerItem);
                 markerText.innerHTML = message.text;
                 li.appendChild(markerText);
