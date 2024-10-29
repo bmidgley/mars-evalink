@@ -359,7 +359,7 @@
                 });
                 if(message["position"][0] != null) {
                     markerText.addEventListener('click', function () {
-                        const coordinates = [100000 * message["position"][1], 100000 * message["position"][0]]
+                        const coordinates = ol.proj.fromLonLat([message["position"][1], message["position"][0]])
                         map.getView().animate({
                             center: coordinates,
                             zoom: 15,
