@@ -126,6 +126,7 @@ def process_message(message):
         station.features["properties"]["voltage"] = telemetry_log.voltage or station.features["properties"].get("voltage")
         station.features["properties"]["current"] = telemetry_log.current or station.features["properties"].get("current")
         station.features["properties"]["node_type"] = station.hardware.station_type
+        station.features["properties"]["time"] = iso_time(message['timestamp'])
         station.updated_at = time
         station.save()
         log_measurements(station, station.features, time)

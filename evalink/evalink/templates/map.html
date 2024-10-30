@@ -422,6 +422,7 @@
                                     coordinates: [],
                                     id: id,
                                     battery: battery,
+                                    time: time,
                                 };
                             }
                         }
@@ -496,21 +497,34 @@
             window.current_date = data.date;
         }
 
-        function battery_text(battery) {
+        function battery_text(battery, isotime) {
+            const date = new Date(isotime);
+            const now = new Date();
+            const hours = Math.round((now - date) / (1000 * 360)) / 10;
+            const days = Math.round((now - date) / (1000 * 3600 * 24));
+            var description = null;
+            if(hours <= 0) {
+                description = "current";
+            } else if (hours < 72) {
+                description = `${hours} hours ago`;
+            } else {
+                description = `${days} days ago`;
+            }
             if(battery == null) return "No battery"
-            if(battery == 101) return "Plugged in, charged"
-            return battery + "%"
+            if(battery == 101) return `Plugged in, charged -- ${description}`
+            return `${battery}% -- ${description}`
         }
 
         function showTimeSlider(name) {
             const times = markerData[name].times;
             const coordinates = markerData[name].coordinates;
             const battery = markerData[name].battery;
+            const time = markerData[name].time;
             const timeSliderContainer = document.getElementById('time-slider-container');
             const timeSlider = document.getElementById('time-slider');
             const selectedTime = document.getElementById('selected-time');
             document.getElementById('nameTimeSlider').innerHTML = name;
-            document.getElementById('batteryTimeSlider').innerHTML = battery_text(battery);
+            document.getElementById('batteryTimeSlider').innerHTML = battery_text(battery, time);
 
             const emergencyIcon = document.getElementById('emergency-icon');
             if (emergencyList.includes(name)) {
