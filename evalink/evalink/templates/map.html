@@ -498,21 +498,24 @@
         }
 
         function battery_text(battery, isotime) {
+            if(battery == null) return "No internal battery"
+            if(battery == 101) return `Plugged in, charged -- ${battery_age(isotime)}`
+            return `${battery}% -- ${battery_age(isotime)}`
+        }
+
+        function battery_age(isotime) {
             const date = new Date(isotime);
             const now = new Date();
             const hours = Math.round((now - date) / (1000 * 360)) / 10;
             const days = Math.round((now - date) / (1000 * 3600 * 24));
-            var description = null;
-            if(hours <= 0) {
-                description = "current";
-            } else if (hours < 72) {
-                description = `${hours} hours ago`;
+
+            if(hours <= 1) {
+                return "current";
+            } else if (hours < 48) {
+                return `${hours} hours ago`;
             } else {
-                description = `${days} days ago`;
+                return `${days} days ago`;
             }
-            if(battery == null) return "No battery"
-            if(battery == 101) return `Plugged in, charged -- ${description}`
-            return `${battery}% -- ${description}`
         }
 
         function showTimeSlider(name) {
