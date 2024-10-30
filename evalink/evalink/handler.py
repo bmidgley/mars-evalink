@@ -48,6 +48,7 @@ def process_message(message):
         if station.features == None: station.features = {}
         if "properties" not in station.features: station.features["properties"] = {}
         station.features["properties"]["name"] = station.name
+        station.features["properties"]["time"] = iso_time(message['timestamp'])
         station.save()
         return
 
