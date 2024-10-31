@@ -98,9 +98,9 @@ def process_message(message):
         position_log.save()
         if "geometry" not in station.features: station.features["geometry"] = {}
         station.features["geometry"]["coordinates"] = [lon, lat]
-        station.features["properties"]["altitude"] = position_log.altitude or station.features["properties"]["altitude"]
-        station.features["properties"]["ground_speed"] = position_log.ground_speed or station.features["properties"]["ground_speed"]
-        station.features["properties"]["ground_track"] = position_log.ground_track or station.features["properties"]["ground_track"]
+        station.features["properties"]["altitude"] = position_log.altitude or station.features["properties"].get("altitude")
+        station.features["properties"]["ground_speed"] = position_log.ground_speed or station.features["properties"].get("ground_speed")
+        station.features["properties"]["ground_track"] = position_log.ground_track or station.features["properties"].get("ground_track")
         station.features["properties"]["node_type"] = station.hardware.station_type
         station.features["properties"]["time"] = iso_time(message['timestamp'])
         station.last_position = position_log
