@@ -158,8 +158,6 @@ def log_measurements(station, features, time):
     measure = StationMeasure(station=station, features=features, updated_at=time)
     measure.save()
 
-def iso_time(seconds):
-    tm = datetime.fromtimestamp(seconds)
-    tm = tm.astimezone(pytz.utc)
-    tm = tm.isoformat()
-    return tm
+def iso_time(_seconds):
+    # nodes are reporting current time incorrectly, so disregard and return now in iso
+    return datetime.now().isoformat()
