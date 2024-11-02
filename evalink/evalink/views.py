@@ -40,6 +40,7 @@ def features(request):
 def fully_populated(features):
     if not features: return False
     if not 'geometry' in features: return False
+    if not 'type' in features: return False
     if not 'coordinates' in features['geometry']: return False
     if not 'type' in features['geometry']: return False
     if features['geometry']['coordinates'] == [0, 0]: return False

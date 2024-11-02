@@ -96,7 +96,9 @@ def process_message(message):
             ground_track=ground_track,
             updated_at=time)
         position_log.save()
-        if "geometry" not in station.features: station.features["geometry"] = {}
+        if "geometry" not in station.features: station.features["geometry"] = {"type": "Point"}
+        station.features["type"] = "Feature"
+        station.features["geometry"]["type"] = "Point"
         station.features["geometry"]["coordinates"] = [lon, lat]
         station.features["properties"]["altitude"] = position_log.altitude or station.features["properties"].get("altitude")
         station.features["properties"]["ground_speed"] = position_log.ground_speed or station.features["properties"].get("ground_speed")
