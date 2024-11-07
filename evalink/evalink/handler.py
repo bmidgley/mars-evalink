@@ -34,7 +34,7 @@ def process_message(message):
                 hardware_number=number,
                 hardware_node=payload['id'],
                 station_type=hardware.station_type,
-                short_name=payload['shortname'] or 'blank')
+                short_name=(payload['shortname'] or 'blank!').replace('\x00', ''))
             station.updated_at = time
             try:
                 print(f'adding new station {station} at {time} number {number}')

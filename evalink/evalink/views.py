@@ -28,7 +28,7 @@ def features(request):
         "features": [],
     }
     past = date.today() - timedelta(days = 30)
-    top_stations = Station.objects.filter(updated_at__gt = past).order_by('-updated_at').all()[:55]
+    top_stations = Station.objects.filter(updated_at__gt = past).order_by('-updated_at').all()[:45]
     for station in sorted(top_stations, key=lambda x: x.name.lower(), reverse=False):
         if fully_populated(station.features):
             station.features['properties']['hardware_number'] = station.hardware_number
