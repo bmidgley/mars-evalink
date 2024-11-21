@@ -8,4 +8,5 @@ Make the erd:
 
 Install
 
+apt install libgraphviz-dev
 pip install -r requirements.txt
