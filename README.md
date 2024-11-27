@@ -67,4 +67,25 @@ echo "GRANT CREATE ON SCHEMA public TO evalink;" | sudo -u postgres psql
 cd evalink
 ./manage.py collectstatic
 ./manage.py migrate
-DJANGO_SETTINGS_MODULE=evalink.settings gunicorn evalink.wsgi
+
+cat >/etc/systemd/system/evalink.service <<EOF
+[Unit]
+Description=Gunicorn instance to serve evalink
+After=network.target
+
+[Service]
+User=evalink
+Group=www-data
+WorkingDirectory=/home/evalink/mars-evalink/evalink
+Environment="PATH=/home/evalink/bin"
+Environment="DJANGO_SETTINGS_MODULE=evalink.settings"
+ExecStart=/home/evalink/bin/gunicorn evalink.wsgi
+
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl start evalink
+sudo systemctl enable evalink
+
