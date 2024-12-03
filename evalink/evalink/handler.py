@@ -82,12 +82,10 @@ def process_message(message):
     station.features["properties"]["node_type"] = station.station_type
 
     if message['type'] == 'position':
-        timestamp = payload.get('time')
+        timestamp = payload.get('timestamp', payload.get('time'))
         if timestamp:
-            print(message)
             timestamp = datetime.fromtimestamp(timestamp)
             timestamp = tz.localize(timestamp)
-            print(timestamp)
         lat = payload['latitude_i'] / 10000000
         lon = payload['longitude_i']  / 10000000
         if lat == 0 or lon == 0: return
