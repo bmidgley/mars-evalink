@@ -48,6 +48,7 @@ class PositionLog(models.Model):
     altitude = models.FloatField(null=True)
     ground_speed = models.FloatField(null=True)
     ground_track = models.FloatField(null=True)
+    timestamp = models.DateTimeField(null=True, db_index=True)
     updated_at = models.DateTimeField(null=False, db_index=True)
 
 class TelemetryLog(models.Model):
