@@ -98,8 +98,8 @@ def process_message(message):
             altitude=payload.get('altitude'),
             ground_speed=payload.get('ground_speed'),
             ground_track=ground_track,
+            timestamp=timestamp or time,
             updated_at=time)
-        if timestamp: position_log.timestamp = timestamp
         position_log.save()
         if "geometry" not in station.features: station.features["geometry"] = {"type": "Point"}
         station.features["type"] = "Feature"
