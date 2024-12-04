@@ -72,7 +72,7 @@ def path(request):
         found_date = position_log.updated_at.astimezone(timezone.get_current_timezone()).date()
         result['date'] = found_date
         position_logs = PositionLog.objects.filter(station=station, updated_at__date=found_date).filter(
-                                                  Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('updated_at').all()
+                                                  Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('timestamp', 'updated_at').all()
         for log in position_logs:
             result['points'].append({'latitude': log.latitude, 'longitude': log.longitude, 'altitude': log.altitude, 'updated_at': log.updated_at})
         text_logs = TextLog.objects.filter(station=station, updated_at__date=found_date).order_by('updated_at').all()
