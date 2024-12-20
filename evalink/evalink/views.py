@@ -23,6 +23,8 @@ def index(request):
 
 @login_required
 def features(request):
+    campus = Campus.objects.first()
+    fence = campus.inner_geofence
     data = {
         "type": "FeatureCollection",
         "features": [],
@@ -34,6 +36,15 @@ def features(request):
             station.features['properties']['hardware_number'] = station.hardware_number
             station.features['properties']['hardware_node'] = station.hardware_node
             station.features['properties']['id'] = station.id
+            if fence:
+                coordinates = station.features['geometry'].get('coordinates')
+                if coordinates:
+                    distance = 1
+                    longitude = coordinates[0]
+                    latitude = coordinates[1]
+                    if longitude > fence.longitude1 and longitude < fence.longitude2 and latitude > fence.latitude1 and latitude < fence.latitude2:
+                        distance = 0
+                    station.features['properties']['distance'] = distance
             data["features"].append(station.features)
     return JsonResponse(data, json_dumps_params={'indent': 2})
 

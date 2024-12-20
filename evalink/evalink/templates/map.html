@@ -407,6 +407,7 @@
                         featureProjection: map.getView().getProjection(),
                     });
 
+                    onEva = []
                     features.forEach(feature => {
 
                         const id = feature.get('id');
@@ -414,6 +415,10 @@
                         const time = feature.get('time');
                         const battery = feature.get('battery_level')
                         const coordinates = feature.getGeometry().getCoordinates();
+
+                        if (feature.get('node_type') == 'person' && feature.get('distance') > 0) {
+                            onEva.push(name)
+                        }
 
                         if (name && time) {
                             if (!markerData[name]) {
@@ -433,6 +438,22 @@
                             feature.set('emergency', false);
                         }
                     });
+                    if(window.evaAlerted == undefined) window.evaAlerted = Date.now();
+                    if(onEva.length > 0) {
+                        if(Date.now() - window.evaAlerted > 1000 * 600 && document.visibilityState !== "visible") {
+                            const content = `On EVA: ${onEva.join()}`
+                            if (Notification.permission === "granted") {
+                                new Notification(content)
+                            } else if (Notification.permission !== "denied") {
+                                Notification.requestPermission().then((permission) => {
+                                    if (permission === "granted") {
+                                        new Notification(content)
+                                    }
+                                });
+                            }
+                            window.evaAlerted = Date.now();
+                        }
+                    }
 
                     vectorSource.addFeatures(features);
 
