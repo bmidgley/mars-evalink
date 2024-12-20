@@ -303,6 +303,7 @@
     </div>
 
     <script>
+        if (Notification.permission !== "denied" && Notification.permission !== "granted") Notification.requestPermission();
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -382,12 +383,6 @@
                     const content = message.station + ': ' + message.text;
                     if (Notification.permission === "granted") {
                         if(!firstRun) { new Notification(content) }
-                    } else if (Notification.permission !== "denied") {
-                        Notification.requestPermission().then((permission) => {
-                            if (permission === "granted") {
-                                new Notification(content)
-                            }
-                        });
                     }
                     window.seenTextId = message.id;
                 }
@@ -440,16 +435,10 @@
                     });
                     if(window.evaAlerted == undefined) window.evaAlerted = Date.now();
                     if(onEva.length > 0) {
-                        if(Date.now() - window.evaAlerted > 1000 * 600 && document.visibilityState !== "visible") {
+                        if(Date.now() - window.evaAlerted > 1000 * 60 * 10) {
                             const content = `On EVA: ${onEva.join()}`
                             if (Notification.permission === "granted") {
                                 new Notification(content)
-                            } else if (Notification.permission !== "denied") {
-                                Notification.requestPermission().then((permission) => {
-                                    if (permission === "granted") {
-                                        new Notification(content)
-                                    }
-                                });
                             }
                             window.evaAlerted = Date.now();
                         }
