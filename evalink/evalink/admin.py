@@ -6,14 +6,17 @@ class HardwareAdmin(admin.ModelAdmin):
     list_display = [f.name for f in Hardware._meta.fields]
 class StationAdmin(admin.ModelAdmin):
     list_display = [f.name for f in Station._meta.fields]
+    exclude = ('last_position',)
 class StationProfileAdmin(admin.ModelAdmin):
     list_display = [f.name for f in StationProfile._meta.fields]
 class PositionLogAdmin(admin.ModelAdmin):
     list_display = [f.name for f in PositionLog._meta.fields]
 class TelemetryLogAdmin(admin.ModelAdmin):
     list_display = [f.name for f in TelemetryLog._meta.fields]
+    exclude = ('position_log',)
 class TextLogAdmin(admin.ModelAdmin):
     list_display = [f.name for f in TextLog._meta.fields]
+    exclude = ('position_log','destination',)
 class NeighborLogAdmin(admin.ModelAdmin):
     list_display = [f.name for f in NeighborLog._meta.fields]
 class StationMeasureAdmin(admin.ModelAdmin):
