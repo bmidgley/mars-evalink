@@ -23,7 +23,7 @@ def index(request):
 
 @login_required
 def features(request):
-    campus = Campus.objects.first()
+    campus = Campus.objects.get(name=os.getenv('CAMPUS'))
     fence = campus.inner_geofence
     data = {
         "type": "FeatureCollection",
@@ -67,7 +67,7 @@ def path(request):
     id = request.GET.get('id')
     station = Station.objects.filter(id=id).first()
     if station == None: return HttpResponseNotFound("not found")
-    campus = Campus.objects.first()
+    campus = Campus.objects.get(name=os.getenv('CAMPUS'))
     g = campus.inner_geofence
     current = date.today() + timedelta(days = 1)
     before_date = localdate("before", request.GET.get('before_date'), current)
