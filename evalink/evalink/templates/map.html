@@ -345,6 +345,7 @@
             const message_list_el = document.getElementById("message-list");
             message_list_el.innerHTML = "";
             for(const message of messages) {
+                if(message["station_type"] == "ignore") continue;
                 const li = document.createElement("li");
                 const markerItem = document.createElement("div");
                 const markerText = document.createElement("div");

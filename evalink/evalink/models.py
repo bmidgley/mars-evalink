@@ -74,6 +74,7 @@ class TextLog(models.Model):
             "id": self.id,
             "stataion_id": self.station_id,
             "station": self.station.name,
+            "station_type": self.station.station_type,
             "text": self.text,
             "position": [getattr(self.position_log, 'latitude', None),getattr(self.position_log, 'longitude', None)],
             "updated_at": self.updated_at
