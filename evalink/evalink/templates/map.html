@@ -484,10 +484,11 @@
 
         async function populatePath(name, before_date, after_date) {
             vectorTrackSource.clear();
-            var request = "/path.json?id=" + markerData[name].id
-            if(before_date) request += "&before_date=" + before_date
-            if(after_date) request += "&after_date=" + after_date
-            var response = await fetch(request);
+            var prefix = "/path.json?"
+            var params = `name=${name}&id=${markerData[name].id}`
+            if(before_date) params += "&before_date=" + before_date
+            if(after_date) params += "&after_date=" + after_date
+            var response = await fetch(`${prefix}${params}`);
             const data = await response.json();
             markerData[name].coordinates = []
             markerData[name].times = []
@@ -503,7 +504,7 @@
                 geometry : route,
             });
             vectorTrackSource.addFeature(feature);
-            showTimeSlider(name);
+            showTimeSlider(name, `${window.location.origin}${window.location.pathname}?${params}`);
             window.current_name = name;
             window.current_date = data.date;
         }
@@ -529,7 +530,7 @@
             }
         }
 
-        function showTimeSlider(name) {
+        function showTimeSlider(name, url) {
             const times = markerData[name].times;
             const coordinates = markerData[name].coordinates;
             const battery = markerData[name].battery;
@@ -537,7 +538,7 @@
             const timeSliderContainer = document.getElementById('time-slider-container');
             const timeSlider = document.getElementById('time-slider');
             const selectedTime = document.getElementById('selected-time');
-            document.getElementById('nameTimeSlider').innerHTML = name;
+            document.getElementById('nameTimeSlider').innerHTML = `<a href="${url}">${name}</a>`;
             document.getElementById('batteryTimeSlider').innerHTML = battery_text(battery, time);
 
             const emergencyIcon = document.getElementById('emergency-icon');
@@ -1036,8 +1037,17 @@
 
             console.log(items);
         }
-       
-
+        const urlParams = new URLSearchParams(window.location.search);
+        const name = urlParams.get('name');
+        const before_date = urlParams.get('before_date');
+        const after_date = urlParams.get('after_date');
+        if(name) {
+            setTimeout(function() {
+                populatePath(name, before_date, after_date);
+                zoomToMarker(name);
+                populateCrewDropdown(name);
+            }, 1500);
+        }
     </script>
 </body>
 
