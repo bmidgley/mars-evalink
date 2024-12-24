@@ -792,7 +792,7 @@
 
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `${name}_data.gpx`;
+                a.download = `${name}_${data.times[0]}.gpx`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
