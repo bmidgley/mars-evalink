@@ -261,7 +261,7 @@
             <img id="emergency-icon" src="https://img.icons8.com/ios-filled/50/000000/siren.png" height="30"
                 width="30" />
         </button>
-        <button id="download-button" title="Download JSON For Selected Only">
+        <button id="download-button" title="Download Tracks For Selection">
             <img src="https://img.icons8.com/material-outlined/24/000000/download.png" height="30" width="30" />
         </button>
     </div>
@@ -479,7 +479,7 @@
                 downloadAllData();
             });
 
-            markerList.appendChild(downloadJsonButton);
+            // markerList.appendChild(downloadJsonButton);
         }
 
         async function populatePath(name, before_date, after_date) {
@@ -538,7 +538,7 @@
             const timeSliderContainer = document.getElementById('time-slider-container');
             const timeSlider = document.getElementById('time-slider');
             const selectedTime = document.getElementById('selected-time');
-            document.getElementById('nameTimeSlider').innerHTML = `<a href="${url}">${name}</a>`;
+            document.getElementById('nameTimeSlider').innerHTML = `<a id="nameTimeSliderName" href="${url}">${name}</a>`;
             document.getElementById('batteryTimeSlider').innerHTML = battery_text(battery, time);
 
             const emergencyIcon = document.getElementById('emergency-icon');
@@ -752,24 +752,47 @@
         }
 
         function downloadSelected() {
-            const name = document.getElementById('nameTimeSlider').innerHTML;
+            const name = document.getElementById('nameTimeSliderName').innerHTML;
             const data = markerData[name];
 
             if (data) {
-                const jsonData = {
-                    name: name,
-                    times: data.times,
-                    coordinates: data.coordinates.map(coord => ol.proj.toLonLat(coord))
-                };
+                const header = `
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Wikipedia"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+ <metadata>
+  <name>${name}</name>
+  <desc>${name} tracks from ${data.times[0]}</desc>
+ </metadata>
+     <trk>
+         <name>${name} from ${data.times[0]}</name>
+         <trkseg>
+                `;
+                const footer = `
+         </trkseg>
+     </trk>
+</gpx>
+                `;
+                var body = "";
 
-                const jsonContent = JSON.stringify(jsonData);
+                for(i = 0; i < data.times.length; i++) {
+                    coordinates = ol.proj.toLonLat(data.coordinates[i])
+                    body += `
+             <trkpt lat="${coordinates[1]}" lon="${coordinates[0]}">
+                 <time>${data.times[i]}</time>
+             </trkpt>
+                    `;
+                }
 
-                const blob = new Blob([jsonContent], { type: 'application/json' });
+                var content = `${header}${body}${footer}`;
+
+                const blob = new Blob([content], { type: 'application/gpx+xml' });
                 const url = URL.createObjectURL(blob);
 
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `${name}_data.json`;
+                a.download = `${name}_data.gpx`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -805,7 +828,7 @@
         }
 
         function sendEmergencySignal() {
-            const name = document.getElementById('nameTimeSlider').innerHTML;
+            const name = document.getElementById('nameTimeSliderName').innerHTML;
 
             if (name && !emergencyList.includes(name)) {
                 const emergencyIcon = document.getElementById('emergency-icon');
@@ -967,7 +990,7 @@
         }
 
         function addCrew() {
-            const selectedDevice = document.getElementById('nameTimeSlider').innerHTML;
+            const selectedDevice = document.getElementById('nameTimeSliderName').innerHTML;
             const ddlCrews = document.getElementById('ddlCrews');
             const selectedCrew = ddlCrews.value;
 
@@ -977,7 +1000,7 @@
         }
 
         function removeCrew() {
-            const selectedDevice = document.getElementById('nameTimeSlider').innerHTML;
+            const selectedDevice = document.getElementById('nameTimeSliderName').innerHTML;
             const ddlCrews = document.getElementById('ddlCrews');
             ddlCrews.value = '';
             const deviceIndex = deviceCrew.findIndex(item => item.device === selectedDevice);
