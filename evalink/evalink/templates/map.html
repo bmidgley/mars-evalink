@@ -708,7 +708,7 @@
             });
 
             if (feature) {
-                name = feature.values_.name
+                var name = feature.values_.name
 
                 // activate commonpanel
                 populatePath(name);
@@ -1069,7 +1069,7 @@
                 populatePath(name, before_date, after_date);
                 zoomToMarker(name);
                 populateCrewDropdown(name);
-            }, 1500);
+            }, 1000);
         }
     </script>
 </body>
