@@ -234,6 +234,9 @@
 
 
     <div id="time-slider-container">
+        <button id="time-slider-close" type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
         <h3 id="nameTimeSlider"></h3>
         <div id="batteryTimeSlider"></div>
         <select id="ddlCrews"></select>
@@ -538,6 +541,7 @@
             const timeSliderContainer = document.getElementById('time-slider-container');
             const timeSlider = document.getElementById('time-slider');
             const selectedTime = document.getElementById('selected-time');
+            const closeButton = document.getElementById('time-slider-close')
             document.getElementById('nameTimeSlider').innerHTML = `<a id="nameTimeSliderName" href="${url}">${name}</a>`;
             document.getElementById('batteryTimeSlider').innerHTML = battery_text(battery, time);
 
@@ -567,6 +571,10 @@
                 selectedTime.textContent = `Time: ${selected}`;
                 drawTemporaryMarker(coordinates[index]);
             };
+
+            closeButton.onclick = function() {
+                timeSliderContainer.style.display = 'none';
+            }
 
             const index = parseInt(timeSlider.value, 10);
             const selected = times[index];
