@@ -27,5 +27,6 @@ urlpatterns = [
     path('texts.json', views.texts, name='texts'),
     path('path.json', views.path, name='path'),
     path('point', views.point, name='point'),
+    path('inventory/', views.inventory, name='inventory'),
     path('chat/', views.chat, name='chat')
 ]
