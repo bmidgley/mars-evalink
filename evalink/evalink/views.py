@@ -223,9 +223,11 @@ def inventory(request):
     stations = Station.objects.filter(updated_at__gt = past).filter(~Q(station_type="ignore")).order_by('name').all()
     for station in stations:
         if station.features == None: continue
+        coordinates = station.features.get('geometry', {}).get('coordinates', [])
+        if coordinates == []: continue
         items.append({'name': station.name,
                       'firmware': station.firmware,
                       'updated': station.updated_at,
-                      'coordinates': station.features.get('geometry', {}).get('coordinates', []),
+                      'coordinates': coordinates,
                       'battery': station.features.get('properties', {}).get('battery_level', None)})
     return JsonResponse({'items': items}, json_dumps_params={'indent': 2})
