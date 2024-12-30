@@ -29,6 +29,9 @@ def features(request):
         "type": "FeatureCollection",
         "features": [],
     }
+    tz = pytz.timezone("US/Mountain")
+    timezone.now()
+    now = datetime.now(tz)
     past = date.today() - timedelta(days = 30)
     top_stations = Station.objects.filter(updated_at__gt = past).filter(~Q(station_type="ignore")).order_by('-updated_at').all()[:45]
     for station in sorted(top_stations, key=lambda x: x.name.lower(), reverse=False):
@@ -36,6 +39,7 @@ def features(request):
             station.features['properties']['hardware_number'] = station.hardware_number
             station.features['properties']['hardware_node'] = station.hardware_node
             station.features['properties']['id'] = station.id
+            station.features['properties']['days_old'] = (now - station.updated_at).days
             if fence:
                 coordinates = station.features['geometry'].get('coordinates')
                 if coordinates:

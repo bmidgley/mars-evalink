@@ -676,7 +676,7 @@
         const vectorLayer = new ol.layer.Vector({
             source: vectorSource,
             style: function (feature) {
-                const emergency = feature.get('emergency');
+                const emergency = feature.get('emergency') || feature.get('days_old') > 1;
                 const nodeType = feature.get('node_type')
                 const coordinates = feature.getGeometry().getCoordinates();
                 var icon = emergency ? createSvgDataURL(nodeType, 255, 0, 0) : createSvgDataURL(nodeType, 0, 0, 0)
