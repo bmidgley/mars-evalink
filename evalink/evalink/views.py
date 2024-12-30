@@ -40,6 +40,7 @@ def features(request):
             station.features['properties']['hardware_node'] = station.hardware_node
             station.features['properties']['id'] = station.id
             station.features['properties']['days_old'] = (now - station.updated_at).days
+            station.features['properties']['hours_old'] = (now - station.updated_at).total_seconds() / 3600.0
             if fence:
                 coordinates = station.features['geometry'].get('coordinates')
                 if coordinates:
