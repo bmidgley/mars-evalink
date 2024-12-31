@@ -10,6 +10,7 @@ Make the erd:
 
 ## Install
 
+```
 sudo useradd -m evalink
 sudo su - evalink
 git clone git@github.com:bmidgley/mars-evalink.git
@@ -88,4 +89,4 @@ EOF
 
 sudo systemctl start evalink
 sudo systemctl enable evalink
-
+```
