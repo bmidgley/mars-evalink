@@ -681,7 +681,7 @@
                 const emergency = feature.get('emergency') || untracked || eva_lost;
                 const nodeType = feature.get('node_type')
                 const coordinates = feature.getGeometry().getCoordinates();
-                var icon = emergency ? createSvgDataURL(nodeType, 255, 0, 0) : createSvgDataURL(nodeType, 0, 0, 0)
+                var icon = emergency ? createSvgDataURL(nodeType, 180, 128, 128) : createSvgDataURL(nodeType, 0, 0, 0)
  
                 return new ol.style.Style({
                     image: new ol.style.Icon({
