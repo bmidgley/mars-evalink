@@ -21,7 +21,6 @@ def parse_node_info(node_info):
     print("Parsing node info...")
     nodes = []
     for node_id, node in node_info.items():
-        print(node)
         nodes.append({
             'num': node_id,
             'user': {
