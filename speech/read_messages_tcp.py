@@ -2,7 +2,7 @@
 
 import time
 import sys
-import os
+import subprocess
 from pubsub import pub
 from meshtastic.tcp_interface import TCPInterface
 from meshtastic import portnums_pb2
@@ -39,7 +39,7 @@ def on_receive(packet, interface, node_list):
             fromnum = packet['fromId']
             shortname = next((node['user']['shortName'] for node in node_list if node['num'] == fromnum), 'Unknown')
             print(f"{shortname}: {message}")
-            os.system(f'espeak -s 100 "text from {shortname} reading {message}"')
+            subprocess.run(["espeak", "-s", "100", f"text from {shortname} reading {message}"])
     except KeyError:
         pass  # Ignore KeyError silently
     except UnicodeDecodeError:
