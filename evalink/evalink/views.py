@@ -33,9 +33,10 @@ def features(request):
     timezone.now()
     now = datetime.now(tz)
     past = date.today() - timedelta(days = 30)
-    top_stations = Station.objects.filter(updated_at__gt = past).filter(~Q(station_type="ignore")).order_by('-updated_at').all()
-    if not request.user.groups.filter(name='full-history').exists():
-        top_stations = top_stations[:45]
+    if request.user.groups.filter(name='full-history').exists():
+        top_stations = Station.objects.order_by('-updated_at').all()
+    else:
+        top_stations = Station.objects.filter(updated_at__gt = past).filter(~Q(station_type="ignore")).order_by('-updated_at').all()[:45]
     for station in sorted(top_stations, key=lambda x: x.name.lower(), reverse=False):
         if fully_populated(station.features):
             station.features['properties']['hardware_number'] = station.hardware_number
