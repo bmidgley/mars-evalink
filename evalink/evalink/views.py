@@ -34,7 +34,7 @@ def features(request):
     now = datetime.now(tz)
     past = date.today() - timedelta(days = 30)
     if request.user.groups.filter(name='full-history').exists():
-        top_stations = Station.filter(~Q(station_type="ignore")).objects.order_by('-updated_at').all()
+        top_stations = Station.objects.filter(~Q(station_type="ignore")).order_by('-updated_at').all()
     else:
         top_stations = Station.objects.filter(updated_at__gt = past).filter(~Q(station_type="ignore")).order_by('-updated_at').all()[:45]
     for station in sorted(top_stations, key=lambda x: x.name.lower(), reverse=False):
