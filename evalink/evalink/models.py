@@ -69,12 +69,14 @@ class TextLog(models.Model):
     text = models.TextField(db_index=True)
     serial_number = models.BigIntegerField(db_index=True, unique=True)
     updated_at = models.DateTimeField(null=False, db_index=True)
-    def serialize(self):
+    def serialize(self, show_all=False):
+        station_type = self.station.station_type
+        if station_type == 'ignore' and show_all: station_type = 'infrastructure'
         return {
             "id": self.id,
             "stataion_id": self.station_id,
             "station": self.station.name,
-            "station_type": self.station.station_type,
+            "station_type": station_type,
             "text": self.text,
             "position": [getattr(self.position_log, 'latitude', None),getattr(self.position_log, 'longitude', None)],
             "updated_at": self.updated_at
