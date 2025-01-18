@@ -495,12 +495,15 @@
             const data = await response.json();
             markerData[name].coordinates = []
             markerData[name].times = []
+            markerData[name].altitudes = []
             var pointList = []
             for(const point of data.points) {
                 var projection = ol.proj.fromLonLat([point.longitude, point.latitude]);
+                const altitude = point.altitude;
                 pointList.push([point.longitude, point.latitude])
                 markerData[name].coordinates.push(projection);
                 markerData[name].times.push(point.updated_at);
+                if(altitude) markerData[name].altitudes.push(altitude);
             }
             var route = new ol.geom.LineString(pointList).transform('EPSG:4326', 'EPSG:3857');
             var feature = new ol.Feature({
@@ -808,9 +811,11 @@
                     coordinates = ol.proj.toLonLat(data.coordinates[i])
                     body += `
              <trkpt lat="${coordinates[1]}" lon="${coordinates[0]}">
-                 <time>${data.times[i]}</time>
-             </trkpt>
-                    `;
+                 <time>${data.times[i]}</time>`;
+                if(data.altitudes[i]) body += `
+                 <ele>${data.altitudes[i]}</ele>`;
+                 body += `
+             </trkpt>`;
                 }
 
                 var content = `${header}${body}${footer}`;
