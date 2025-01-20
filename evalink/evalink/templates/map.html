@@ -493,14 +493,15 @@
             if(after_date) params += "&after_date=" + after_date
             var response = await fetch(`${prefix}${params}`);
             const data = await response.json();
-            markerData[name].coordinates = []
-            markerData[name].times = []
-            markerData[name].altitudes = []
-            var pointList = []
+            markerData[name].coordinates = [];
+            markerData[name].times = [];
+            markerData[name].altitudes = [];
+            markerData[name].waypoints = data.waypoints;
+            var pointList = [];
             for(const point of data.points) {
                 var projection = ol.proj.fromLonLat([point.longitude, point.latitude]);
                 const altitude = point.altitude;
-                pointList.push([point.longitude, point.latitude])
+                pointList.push([point.longitude, point.latitude]);
                 markerData[name].coordinates.push(projection);
                 markerData[name].times.push(point.updated_at);
                 if(altitude) markerData[name].altitudes.push(altitude);
@@ -806,7 +807,14 @@
 </gpx>
                 `;
                 var body = "";
-
+                for(let i = 0; i < data.waypoints.length; i++) {
+                    let wp = data.waypoints[i];
+                    body += `
+             <wpt lat="${wp.latitude}" lon="${wp.longitude}">
+                 <time>${wp.updated_at}</time>
+                 <name>${wp.text}</name>
+             </wpt>`
+                }
                 for(let i = 0; i < data.times.length; i++) {
                     coordinates = ol.proj.toLonLat(data.coordinates[i])
                     body += `
