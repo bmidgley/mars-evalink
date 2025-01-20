@@ -805,7 +805,7 @@
                 var body = "";
                 for(let i = 0; i < data.waypoints.length; i++) {
                     let wp = data.waypoints[i];
-                body += `
+                    body += `
      <wpt lat="${wp.latitude}" lon="${wp.longitude}">
          <time>${wp.updated_at}</time>
          <name>${wp.text}</name>
