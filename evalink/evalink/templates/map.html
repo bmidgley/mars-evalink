@@ -797,24 +797,24 @@
   <name>${name}</name>
   <desc>${name} tracks from ${data.times[0]}</desc>
  </metadata>
-     <trk>
-         <name>${name} from ${data.times[0]}</name>
-         <trkseg>
                 `;
                 const footer = `
          </trkseg>
      </trk>
-</gpx>
-                `;
+</gpx>`;
                 var body = "";
                 for(let i = 0; i < data.waypoints.length; i++) {
                     let wp = data.waypoints[i];
-                    body += `
-             <wpt lat="${wp.latitude}" lon="${wp.longitude}">
-                 <time>${wp.updated_at}</time>
-                 <name>${wp.text}</name>
-             </wpt>`
+                body += `
+     <wpt lat="${wp.latitude}" lon="${wp.longitude}">
+         <time>${wp.updated_at}</time>
+         <name>${wp.text}</name>
+     </wpt>`
                 }
+                body += `
+     <trk>
+         <name>${name} from ${data.times[0]}</name>
+         <trkseg>`;
                 for(let i = 0; i < data.times.length; i++) {
                     coordinates = ol.proj.toLonLat(data.coordinates[i])
                     body += `
