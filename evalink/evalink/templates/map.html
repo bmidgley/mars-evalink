@@ -497,6 +497,7 @@
             markerData[name].times = [];
             markerData[name].altitudes = [];
             markerData[name].waypoints = data.waypoints;
+            markerData[name].hardware_name = data.hardware_name;
             var pointList = [];
             for(const point of data.points) {
                 var projection = ol.proj.fromLonLat([point.longitude, point.latitude]);
@@ -795,7 +796,7 @@
     xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
  <metadata>
   <name>${name}</name>
-  <desc>${name} tracks from ${data.times[0]}</desc>
+  <desc>${name} tracks from ${data.times[0]} device ${data.hardware_name}</desc>
  </metadata>
                 `;
                 const footer = `
