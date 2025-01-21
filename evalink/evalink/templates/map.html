@@ -340,6 +340,14 @@
         let emergencyList = [];
         let geojsonData;
         let deviceCrew = [];
+        let waypoints = [];
+
+        function displayWaypoints() {
+            for(const point of waypoints) {
+                var coordinates = ol.proj.fromLonLat([point.longitude, point.latitude]);
+                drawTemporaryMarker(coordinates, "flag", point.text);
+            }
+        }
 
         async function checkTexts(firstRun) {
             if(firstRun) window.seenTextId = 0;
@@ -399,7 +407,9 @@
             fetch(geojsonUrl)
                 .then(response => response.json())
                 .then(data => {
+                    // vectorSource holds stations
                     vectorSource.clear();
+                    displayWaypoints();
                     let geojsonData = data;
 
                     const features = vectorSource.getFormat().readFeatures(data, {
@@ -507,6 +517,8 @@
                 markerData[name].times.push(point.updated_at);
                 if(altitude) markerData[name].altitudes.push(altitude);
             }
+            waypoints = data.waypoints;
+            displayWaypoints();
             var route = new ol.geom.LineString(pointList).transform('EPSG:4326', 'EPSG:3857');
             var feature = new ol.Feature({
                 geometry : route,
@@ -574,7 +586,7 @@
                 const index = parseInt(timeSlider.value, 10);
                 const selected = times[index];
                 selectedTime.textContent = `Time: ${selected}`;
-                drawTemporaryMarker(coordinates[index]);
+                drawTemporaryMarker(coordinates[index], 'person');
             };
 
             closeButton.onclick = function() {
@@ -631,20 +643,29 @@
                 </svg>
             `;
 
-            let icons = {"person": svgPerson, "infrastructure": svgTower, "antenna": svgAntenna}
+            // https://uxwing.com/map-marker-flag-icon/
+            // https://boxy-svg.com/app/disk:pjLK0dMimb
+            const svgFlag = `
+                <svg xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" image-rendering="optimizeQuality" fill-rule="evenodd" clip-rule="evenodd" viewBox="0 0 492 512.14" height="20" width="20">
+                    <path d="M169.28 262.03c153.59 11.89 145.6-75.49 322.72-117.27C366.3 36.78 268.32 110.2 169.28 23.8v-2.79c0-11.6-9.41-21.01-21.01-21.01-11.6 0-21.01 9.41-21.01 21.01V399.3c0 11.6 9.41 21.01 21.01 21.01 11.6 0 21.01-9.41 21.01-21.01V262.03zm41.08 60.37c22.35 2.82 44.63 13.66 60.84 30 15.78 15.92 26.09 37 26.09 61.29 0 15.75-5.76 31.07-16.31 44.8-9.42 12.25-22.83 23.3-39.35 32.09-12.77 6.79-27.59 12.33-44.01 16.08-15.36 3.51-31.94 5.48-49.35 5.48-16.23 0-31.74-1.71-46.19-4.77-15.48-3.28-29.54-8.11-41.83-14.05C34 480.61 17.13 463.58 8.11 445.17c-7.83-15.99-9.77-32.84-6.77-48.96 2.88-15.55 10.38-30.1 21.55-42.15 14.79-15.94 36.28-27.68 62-31.31l4.07 37.3c-18.14 2.57-32.95 10.48-42.84 21.14-6.31 6.81-10.49 14.65-11.98 22.69-1.38 7.47-.41 15.43 3.37 23.15 5.59 11.42 17.15 22.52 35.99 31.64 10.26 4.96 21.95 8.98 34.75 11.7 12.19 2.58 25.61 4.02 40.02 4.02 15.47 0 29.79-1.65 42.66-4.6 13.63-3.11 25.89-7.68 36.4-13.27 12.28-6.53 21.92-14.33 28.32-22.66 5.2-6.77 8.04-13.69 8.04-20.17 0-12.74-5.85-24.24-14.8-33.27-11.06-11.15-26.52-18.58-42.2-20.56l3.67-37.46z" style="fill: rgb(${r}, ${g}, ${b});"/>
+                </svg>
+            `;
+
+            let icons = {"person": svgPerson, "infrastructure": svgTower, "antenna": svgAntenna, "flag": svgFlag};
 
             return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(icons[nodeType] || svgTower);
         }
 
-        function drawTemporaryMarker(coordinates) {
+        function drawTemporaryMarker(coordinates, icon, label) {
             const temporaryMarker = new ol.Feature({
                 geometry: new ol.geom.Point(coordinates),
+                label: label,
             });
 
             temporaryMarker.setStyle(
                 new ol.style.Style({
                     image: new ol.style.Icon({
-                        src: createSvgDataURL('person', 0, 0, 255),
+                        src: createSvgDataURL(icon, 0, 0, 255),
                         imgSize: [24, 24],
                         anchor: [0.5, 1],
                         anchorXUnits: 'fraction',
@@ -741,23 +762,37 @@
             });
 
             if (feature) {
-                const name = feature.values_.name
+                const name = feature.get("name");
 
-                // activate commonpanel
-                populatePath(name);
-                // zoomToMarker(name);
-                populateCrewDropdown(name);
+                if(name) {
+                    // activate commonpanel
+                    populatePath(name);
+                    // zoomToMarker(name);
+                    populateCrewDropdown(name);
+                }
             } 
         });
 
-        map.on('pointermove', function (e) {
-            if (e.dragging) {
+        map.on('pointermove', function (event) {
+            if (event.dragging) {
                 overlay.setPosition(undefined);
                 return;
             }
-            const pixel = map.getEventPixel(e.originalEvent);
+            const pixel = map.getEventPixel(event.originalEvent);
             const hit = map.hasFeatureAtPixel(pixel);
             map.getTargetElement().style.cursor = hit ? 'pointer' : '';
+
+            const feature = map.forEachFeatureAtPixel(event.pixel, function (feature) {
+                return feature;
+            });
+
+            if(feature) {
+                station_name = feature.get("name");
+                label = feature.get("label")
+                if (feature && !station_name && label) {
+                    console.log(label);
+                }
+            }
         });
 
         setInterval(updateGeoJSON, 9000);
@@ -769,8 +804,6 @@
         }
 
         function openCity(evt, cityName) {
-            // console.log("Click Event");
-
             var i, tabcontent, tablinks;
             tabcontent = document.getElementsByClassName("tab-content");
             for (i = 0; i < tabcontent.length; i++) {
