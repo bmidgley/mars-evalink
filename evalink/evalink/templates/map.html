@@ -342,7 +342,7 @@
         const geojsonUrl =
             '/features.json';
         const key = 'VfcvzosbIEMkLMsjWMpz';
-
+        const info = document.getElementById('info');
         const attribution = new ol.control.Attribution({
             collapsible: false,
         });
@@ -787,6 +787,11 @@
                     populatePath(name);
                     // zoomToMarker(name);
                     populateCrewDropdown(name);
+                } else {
+                    info.style.left = event.pixel[0] + 'px';
+                    info.style.top = event.pixel[1] + 'px';
+                    info.style.visibility = 'visible';
+                    info.innerText = feature.get("label");
                 }
             } 
         });
@@ -804,7 +809,6 @@
                 return feature;
             });
 
-            const info = document.getElementById('info');
             if(feature && !feature.get("name") && feature.get("label")) {
                 info.style.left = event.pixel[0] + 'px';
                 info.style.top = event.pixel[1] + 'px';
