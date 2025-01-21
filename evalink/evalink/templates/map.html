@@ -809,8 +809,12 @@
                     body += `
      <wpt lat="${wp.latitude}" lon="${wp.longitude}">
          <time>${wp.updated_at}</time>
-         <name>${wp.text}</name>
-     </wpt>`
+         <name>${wp.text}</name>`
+                    if(wp.altitude)
+                        body += `
+         <ele>${wp.altitude}</ele>`;
+                    body += `
+     </wpt>`;
                 }
                 body += `
      <trk>
