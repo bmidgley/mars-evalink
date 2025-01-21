@@ -29,6 +29,23 @@
             left: 0;
         }
 
+        #info {
+            position: absolute;
+            display: inline-block;
+            height: auto;
+            width: auto;
+            z-index: 100;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 5px;
+            left: 50%;
+            transform: translateX(3%);
+            visibility: hidden;
+            pointer-events: none;
+        }
+
         .popup {
             padding: 15px;
             border-radius: 10px;
@@ -228,6 +245,7 @@
     <div id="map">
         <a href="https://www.maptiler.com" style="position:absolute;left:10px;bottom:10px;z-index:999;"><img
                 src="https://api.maptiler.com/resources/logo.svg" alt="MapTiler logo"></a>
+        <div id="info"></div>
     </div>
 
     <div id="marker-list"></div>
@@ -786,12 +804,14 @@
                 return feature;
             });
 
-            if(feature) {
-                station_name = feature.get("name");
-                label = feature.get("label")
-                if (feature && !station_name && label) {
-                    console.log(label);
-                }
+            const info = document.getElementById('info');
+            if(feature && !feature.get("name") && feature.get("label")) {
+                info.style.left = event.pixel[0] + 'px';
+                info.style.top = event.pixel[1] + 'px';
+                info.style.visibility = 'visible';
+                info.innerText = feature.get("label");
+            } else {
+                info.style.visibility = 'hidden';
             }
         });
 
