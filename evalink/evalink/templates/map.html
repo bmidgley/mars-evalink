@@ -360,10 +360,23 @@
         let deviceCrew = [];
         let waypoints = [];
 
+        function formattedDate(date) {
+            return date.toLocaleTimeString('sv', { 
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit', 
+            });
+        }
+
         function displayWaypoints() {
             for(const point of waypoints) {
-                var coordinates = ol.proj.fromLonLat([point.longitude, point.latitude]);
-                drawTemporaryMarker(coordinates, "flag", point.text);
+                let parsedTime = new Date(point.updated_at);
+                let formattedTime = formattedDate(parsedTime);
+                let coordinates = ol.proj.fromLonLat([point.longitude, point.latitude]);
+                drawTemporaryMarker(coordinates, "flag", `[${formattedTime}] ${point.text}`);
             }
         }
 
