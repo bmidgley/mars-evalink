@@ -864,41 +864,41 @@
 <gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1" creator="Wikipedia"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
- <metadata>
-  <name>${name}</name>
-  <desc>${name} tracks from ${data.times[0]} device ${data.hardware_name}</desc>
- </metadata>
+    <metadata>
+        <name>${name}</name>
+        <desc>${name} tracks from ${data.times[0]} device ${data.hardware_name}</desc>
+    </metadata>
                 `;
                 const footer = `
-         </trkseg>
-     </trk>
+        </trkseg>
+    </trk>
 </gpx>`;
                 var body = "";
                 for(let i = 0; i < data.waypoints.length; i++) {
                     let wp = data.waypoints[i];
                     body += `
-     <wpt lat="${wp.latitude}" lon="${wp.longitude}">
-         <time>${wp.updated_at}</time>
-         <name>${wp.text}</name>`
+    <wpt lat="${wp.latitude}" lon="${wp.longitude}">
+        <time>${wp.updated_at}</time>
+        <name>${wp.text}</name>`
                     if(wp.altitude)
                         body += `
-         <ele>${wp.altitude}</ele>`;
+        <ele>${wp.altitude}</ele>`;
                     body += `
-     </wpt>`;
+    </wpt>`;
                 }
                 body += `
-     <trk>
-         <name>${name} from ${data.times[0]}</name>
-         <trkseg>`;
+    <trk>
+        <name>${name} from ${data.times[0]}</name>
+        <trkseg>`;
                 for(let i = 0; i < data.times.length; i++) {
                     coordinates = ol.proj.toLonLat(data.coordinates[i])
                     body += `
-             <trkpt lat="${coordinates[1]}" lon="${coordinates[0]}">
-                 <time>${data.times[i]}</time>`;
+            <trkpt lat="${coordinates[1]}" lon="${coordinates[0]}">
+                <time>${data.times[i]}</time>`;
                 if(data.altitudes[i]) body += `
                  <ele>${data.altitudes[i]}</ele>`;
                  body += `
-             </trkpt>`;
+            </trkpt>`;
                 }
 
                 var content = `${header}${body}${footer}`;
