@@ -73,6 +73,7 @@
         }
 
         #time-slider-container {
+            width: 300px;
             position: absolute;
             bottom: 60px;
             right: 10px;
@@ -300,6 +301,7 @@
         <button id="download-button" title="Download Tracks For Selection">
             <img src="https://img.icons8.com/material-outlined/24/000000/download.png" height="30" width="30" />
         </button>
+        <p id="time-slider-coordinates">0,0</p>
     </div>
 
     <div id="message-tab" class="hidden">
@@ -379,7 +381,8 @@
         let deviceCrew = [];
         let waypoints = [];
 
-        function formattedDate(date) {
+        function formattedDate(date_string) {
+            date = new Date(date_string);
             return date.toLocaleTimeString('sv', { 
                 year: 'numeric',
                 month: '2-digit',
@@ -392,8 +395,7 @@
 
         function displayWaypoints() {
             for(const point of waypoints) {
-                let parsedTime = new Date(point.updated_at);
-                let formattedTime = formattedDate(parsedTime);
+                let formattedTime = formattedDate(point.updated_at);
                 let coordinates = ol.proj.fromLonLat([point.longitude, point.latitude]);
                 drawTemporaryMarker(coordinates, "flag", `[${formattedTime}] ${point.text}`);
             }
@@ -608,6 +610,7 @@
             const timeSliderContainer = document.getElementById('time-slider-container');
             const timeSlider = document.getElementById('time-slider');
             const selectedTime = document.getElementById('selected-time');
+            const selectedCoordinate = document.getElementById('time-slider-coordinates');
             const closeButton = document.getElementById('time-slider-close')
             document.getElementById('nameTimeSlider').innerHTML = `<a id="nameTimeSliderName" href="${url}">${name}</a>`;
             document.getElementById('batteryTimeSlider').innerHTML = battery_text(battery, time);
@@ -622,21 +625,17 @@
             timeSlider.disabled = times.length <= 1;
 
             timeSlider.setAttribute('max', times.length - 1);
-            timeSlider.value = 0;
+            timeSlider.value = 100;
 
             timeSlider.oninput = function () {
                 const index = parseInt(timeSlider.value, 10);
                 const selected = times[index];
-                selectedTime.textContent = `Time: ${selected}`;
+                selectedTime.textContent = `Time: ${formattedDate(selected)}`;
 
                 moveMarkerToCoordinates(coordinates[index]);
-            };
 
-            timeSlider.onchange = function () {
-                const index = parseInt(timeSlider.value, 10);
-                const selected = times[index];
-                selectedTime.textContent = `Time: ${selected}`;
-                drawTemporaryMarker(coordinates[index], 'person');
+                const geo = ol.proj.toLonLat(coordinates[index]);
+                selectedCoordinate.innerHTML = `${geo[1]},${geo[0]}`;
             };
 
             closeButton.onclick = function() {
@@ -645,7 +644,7 @@
 
             const index = parseInt(timeSlider.value, 10);
             const selected = times[index];
-            selectedTime.textContent = `Time: ${selected}`;
+            selectedTime.textContent = `Time: ${formattedDate(selected)}`;
 
             timeSliderContainer.style.display = 'block';
         }
