@@ -158,6 +158,12 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
         }
 
+        #layerButton {
+            position: absolute;
+            top: 15px;
+            left: 310px;
+        }
+
         #message-tab form {
             display: flex;
             flex-direction: column;
@@ -318,6 +324,10 @@
         <p id="geo-coordinates"></p>
     </div>
 
+    <button type="button" id="layerButton" onclick="changeLayer();">
+        Remap
+    </button>
+
     <div id="emergency-device-panel" class="hidden">
         <h3>Emergency Device List</h3>
         <ul id="emergency-device-list"></ul>
@@ -368,8 +378,9 @@
             collapsible: false,
         });
 
+        layerName = localStorage.getItem("layerName") || "topo"
         const source = new ol.source.TileJSON({
-            url: `https://api.maptiler.com/maps/topo/tiles.json?key=${key}`, // source URL
+            url: `https://api.maptiler.com/maps/${layerName}/tiles.json?key=${key}`, // source URL
             tileSize: 512,
             crossOrigin: 'anonymous',
         });
@@ -391,6 +402,13 @@
                 hour: '2-digit', 
                 minute: '2-digit', 
             });
+        }
+
+        function changeLayer() {
+            layerName = localStorage.getItem("layerName") || "topo";
+            nextLayer = { "topo": "outdoor", "outdoor": "hybrid", "hybrid": "topo" };
+            localStorage.setItem("layerName", nextLayer[layerName]);
+            location.reload();
         }
 
         function displayWaypoints() {
