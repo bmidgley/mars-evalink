@@ -391,6 +391,8 @@
         let geojsonData;
         let deviceCrew = [];
         let waypoints = [];
+        const selectedTime = document.getElementById('selected-time');
+        const selectedCoordinate = document.getElementById('time-slider-coordinates');
 
         function formattedDate(date_string) {
             date = new Date(date_string);
@@ -620,6 +622,17 @@
             }
         }
 
+        function updateSliderStats(times, coordinates, value) {
+            const index = parseInt(value, 10);
+            const selected = times[index];
+            selectedTime.textContent = `Time: ${formattedDate(selected)}`;
+
+            moveMarkerToCoordinates(coordinates[index]);
+
+            const geo = ol.proj.toLonLat(coordinates[index]);
+            selectedCoordinate.innerHTML = `${geo[1]},${geo[0]}`;
+        };
+
         function showTimeSlider(name, url) {
             const times = markerData[name].times;
             const coordinates = markerData[name].coordinates;
@@ -627,8 +640,6 @@
             const time = markerData[name].time;
             const timeSliderContainer = document.getElementById('time-slider-container');
             const timeSlider = document.getElementById('time-slider');
-            const selectedTime = document.getElementById('selected-time');
-            const selectedCoordinate = document.getElementById('time-slider-coordinates');
             const closeButton = document.getElementById('time-slider-close')
             document.getElementById('nameTimeSlider').innerHTML = `<a id="nameTimeSliderName" href="${url}">${name}</a>`;
             document.getElementById('batteryTimeSlider').innerHTML = battery_text(battery, time);
@@ -646,25 +657,15 @@
             timeSlider.value = times.length - 1;
 
             timeSlider.oninput = function () {
-                const index = parseInt(timeSlider.value, 10);
-                const selected = times[index];
-                selectedTime.textContent = `Time: ${formattedDate(selected)}`;
-
-                moveMarkerToCoordinates(coordinates[index]);
-
-                const geo = ol.proj.toLonLat(coordinates[index]);
-                selectedCoordinate.innerHTML = `${geo[1]},${geo[0]}`;
+                updateSliderStats(times, coordinates, timeSlider.value);
             };
 
             closeButton.onclick = function() {
                 timeSliderContainer.style.display = 'none';
             }
 
-            const index = parseInt(timeSlider.value, 10);
-            const selected = times[index];
-            selectedTime.textContent = `Time: ${formattedDate(selected)}`;
-
             timeSliderContainer.style.display = 'block';
+            updateSliderStats(times, coordinates, timeSlider.value);
         }
 
         function createSvgDataURL(nodeType, r, g, b) {
