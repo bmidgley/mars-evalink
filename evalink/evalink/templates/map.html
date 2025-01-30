@@ -643,7 +643,7 @@
             timeSlider.disabled = times.length <= 1;
 
             timeSlider.setAttribute('max', times.length - 1);
-            timeSlider.value = 100;
+            timeSlider.value = times.length - 1;
 
             timeSlider.oninput = function () {
                 const index = parseInt(timeSlider.value, 10);
