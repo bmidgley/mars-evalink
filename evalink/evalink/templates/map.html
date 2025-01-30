@@ -142,6 +142,21 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
         }
 
+        #geo-tab {
+            position: absolute;
+            width: 275px;
+            height: 35px;
+            top: 60px;
+            left: 10px;
+            background-color: #fff;
+            z-index: 2;
+            border-radius: 5px;
+
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
         #message-tab form {
             display: flex;
             flex-direction: column;
@@ -295,6 +310,10 @@
             
             <input type="submit" value="Send Message">
         </form>
+    </div>
+
+    <div id="geo-tab">
+        <p id="geo-coordinates">0,0</p>
     </div>
 
     <div id="emergency-device-panel" class="hidden">
@@ -821,6 +840,9 @@
             const feature = map.forEachFeatureAtPixel(event.pixel, function (feature) {
                 return feature;
             });
+            const geo = ol.proj.toLonLat(map.getCoordinateFromPixel(pixel));
+            const geo_el = document.getElementById("geo-coordinates");
+            geo_el.innerHTML = `${geo[1]},${geo[0]}`;
 
             if(feature && !feature.get("name") && feature.get("label")) {
                 info.style.left = event.pixel[0] + 'px';
