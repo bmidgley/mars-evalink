@@ -164,6 +164,12 @@
             left: 310px;
         }
 
+        #historyButton {
+            position: absolute;
+            top: 15px;
+            left: 370px;
+        }
+
         #message-tab form {
             display: flex;
             flex-direction: column;
@@ -328,6 +334,14 @@
         Remap
     </button>
 
+    <div id="historyButton">
+        <button type="button" onclick="populateHistory()">
+            Search area...
+        </button>
+        <select id="historyDropdown" onChange="window.open(this.options[this.selectedIndex].value, '_blank');">
+        </select>
+    </div>
+
     <div id="emergency-device-panel" class="hidden">
         <h3>Emergency Device List</h3>
         <ul id="emergency-device-list"></ul>
@@ -411,6 +425,24 @@
             nextLayer = { "topo": "outdoor", "outdoor": "hybrid", "hybrid": "topo" };
             localStorage.setItem("layerName", nextLayer[layerName]);
             location.reload();
+        }
+
+        async function populateHistory() {
+            var dropdown = document.getElementById("historyDropdown");
+            dropdown.innerHTML = ""; // Clear existing options
+
+            const glbox = map.getView().calculateExtent(map.getSize());
+            const box = ol.proj.transformExtent(glbox,'EPSG:3857','EPSG:4326');
+            const url = `/search?latitude1=${box[1]}&longitude1=${box[0]}&latitude2=${box[3]}&longitude2=${box[2]}`;
+            const response = await fetch(url);
+            const paths = await response.json();
+
+            paths.items.forEach(path => {
+                var option1 = document.createElement("option");
+                option1.text = path.name;
+                option1.value = path.url;
+                dropdown.add(option1);
+            })
         }
 
         function displayWaypoints() {
@@ -823,13 +855,6 @@
             offset: [0, -10],
         });
         map.addOverlay(overlay);
-
-        map.on('dblclick', function(event) {
-            var glbox = map.getView().calculateExtent(map.getSize());
-            var box = ol.proj.transformExtent(glbox,'EPSG:3857','EPSG:4326');
-            var url = `/search?latitude1=${box[1]}&longitude1=${box[0]}&latitude2=${box[3]}&longitude2=${box[2]}`;
-            window.open(url, '_blank');
-        })
 
         map.on('click', function (event) {
             const feature = map.forEachFeatureAtPixel(event.pixel, function (feature) {
