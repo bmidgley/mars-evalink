@@ -824,6 +824,13 @@
         });
         map.addOverlay(overlay);
 
+        map.on('dblclick', function(event) {
+            var glbox = map.getView().calculateExtent(map.getSize());
+            var box = ol.proj.transformExtent(glbox,'EPSG:3857','EPSG:4326');
+            var url = `/search?latitude1=${box[1]}&longitude1=${box[0]}&latitude2=${box[3]}&longitude2=${box[2]}`;
+            window.open(url, '_blank');
+        })
+
         map.on('click', function (event) {
             const feature = map.forEachFeatureAtPixel(event.pixel, function (feature) {
                 return feature;
@@ -843,11 +850,6 @@
                     info.style.visibility = 'visible';
                     info.innerText = feature.get("label");
                 }
-            } else {
-                var glbox = map.getView().calculateExtent(map.getSize());
-                var box = ol.proj.transformExtent(glbox,'EPSG:3857','EPSG:4326');
-                var url = `/search?latitude1=${box[1]}&longitude1=${box[0]}&latitude2=${box[3]}&longitude2=${box[2]}`;
-                console.log(url);
             }
         });
 
