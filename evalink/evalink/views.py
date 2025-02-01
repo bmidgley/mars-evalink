@@ -29,7 +29,7 @@ def features(request):
         "type": "FeatureCollection",
         "features": [],
     }
-    tz = pytz.timezone("US/Mountain")
+    tz = pytz.timezone(campus.time_zone)
     timezone.now()
     now = datetime.now(tz)
     past = date.today() - timedelta(days = 30)
@@ -240,4 +240,27 @@ def inventory(request):
                       'updated': station.updated_at,
                       'coordinates': coordinates,
                       'battery': station.features.get('properties', {}).get('battery_level', None)})
+    return JsonResponse({'items': items}, json_dumps_params={'indent': 2})
+
+@login_required
+def search(request):
+    campus = Campus.objects.get(name=os.getenv('CAMPUS'))
+    tz = pytz.timezone(campus.time_zone)
+    latitude1 = float(request.GET.get('latitude1'))
+    latitude2 = float(request.GET.get('latitude2'))
+    longitude1 = float(request.GET.get('longitude1'))
+    longitude2 = float(request.GET.get('longitude2'))
+    latitude1, latitude2 = sorted([latitude1, latitude2])
+    longitude1, longitude2 = sorted([longitude1, longitude2])
+    position_logs = PositionLog.objects.filter(
+            Q(latitude__gt=latitude1) & Q(latitude__lt=latitude2) & Q(longitude__gt=longitude1) & Q(longitude__lt=longitude2)).order_by('updated_at')
+    results = set()
+    items = []
+    for position_log in position_logs:
+        timestamp = position_log.timestamp or position_log.updated_at
+        timestamp = timestamp.astimezone(tz).strftime("%Y-%m-%d")
+        results.add((position_log.station_id,timestamp))
+    for (id, date) in results:
+        station = Station.objects.get(pk=id)
+        items.append(f'/?name={station.name}&before_date={date}')
     return JsonResponse({'items': items}, json_dumps_params={'indent': 2})
