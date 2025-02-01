@@ -338,7 +338,7 @@
         <button type="button" onclick="populateHistory()">
             Search area...
         </button>
-        <select id="historyDropdown" onChange="window.open(this.options[this.selectedIndex].value, '_blank');">
+        <select id="historyDropdown" onChange="window.location = this.options[this.selectedIndex].value;">
         </select>
     </div>
 
