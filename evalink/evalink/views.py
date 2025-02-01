@@ -257,7 +257,6 @@ def search(request):
             Q(latitude__gt=latitude1) & Q(latitude__lt=latitude2) & Q(longitude__gt=longitude1) & Q(longitude__lt=longitude2)).order_by('-updated_at')[:100000]
     results = []
     paths = []
-    html_string = ""
     for position_log in position_logs:
         timestamp = position_log.timestamp or position_log.updated_at
         timestamp = timestamp - timedelta(days = 1)
@@ -266,7 +265,8 @@ def search(request):
         if entry not in results: results.append(entry)
     for (id, date) in results:
         station = Station.objects.get(pk=id)
-        url = f'/?name={station.name}&after_date={date}'
-        name = f'{station.name} on {date}'
-        paths.append({'name': name, 'url': url})
+        if station and station.station_type != 'ignore':
+            url = f'/?name={station.name}&after_date={date}'
+            name = f'{station.name} on {date}'
+            paths.append({'name': name, 'url': url})
     return JsonResponse({'items': paths}, json_dumps_params={'indent': 2})
