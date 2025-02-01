@@ -259,14 +259,14 @@ def search(request):
     paths = []
     for position_log in position_logs:
         timestamp = position_log.timestamp or position_log.updated_at
-        timestamp = timestamp - timedelta(days = 1)
-        timestamp = timestamp.astimezone(tz).strftime("%Y-%m-%d")
-        entry = (position_log.station_id,timestamp)
+        date = timestamp.astimezone(tz).strftime("%Y-%m-%d")
+        after_date = (timestamp - timedelta(days = 1)).astimezone(tz).strftime("%Y-%m-%d")
+        entry = (position_log.station_id, date, after_date)
         if entry not in results: results.append(entry)
-    for (id, date) in results:
+    for (id, date, after_date) in results:
         station = Station.objects.get(pk=id)
         if station and station.station_type != 'ignore':
-            url = f'/?name={station.name}&after_date={date}'
+            url = f'/?name={station.name}&after_date={after_date}'
             name = f'{station.name} on {date}'
             paths.append({'name': name, 'url': url})
     return JsonResponse({'items': paths}, json_dumps_params={'indent': 2})
