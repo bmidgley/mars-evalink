@@ -437,6 +437,12 @@
             const response = await fetch(url);
             const paths = await response.json();
 
+            const blankOption = document.createElement("option");
+            blankOption.value = "";
+            blankOption.text = `${paths.items.length} results found`;
+            dropdown.add(blankOption, 0);
+            blankOption.style.display = "none";
+
             paths.items.forEach(path => {
                 var option1 = document.createElement("option");
                 option1.text = path.name;
