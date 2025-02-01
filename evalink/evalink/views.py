@@ -252,7 +252,8 @@ def search(request):
     longitude2 = float(request.GET.get('longitude2'))
     latitude1, latitude2 = sorted([latitude1, latitude2])
     longitude1, longitude2 = sorted([longitude1, longitude2])
-    position_logs = PositionLog.objects.filter(
+    infra_station_ids = Station.objects.filter(station_type='infrastructure').values_list('pk', flat=True)
+    position_logs = PositionLog.objects.exclude(station_id__in=infra_station_ids).filter(
             Q(latitude__gt=latitude1) & Q(latitude__lt=latitude2) & Q(longitude__gt=longitude1) & Q(longitude__lt=longitude2)).order_by('-updated_at')[:100000]
     results = set()
     html_string = ""
