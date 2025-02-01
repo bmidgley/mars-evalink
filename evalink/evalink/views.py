@@ -255,13 +255,14 @@ def search(request):
     infra_station_ids = Station.objects.filter(station_type='infrastructure').values_list('pk', flat=True)
     position_logs = PositionLog.objects.exclude(station_id__in=infra_station_ids).filter(
             Q(latitude__gt=latitude1) & Q(latitude__lt=latitude2) & Q(longitude__gt=longitude1) & Q(longitude__lt=longitude2)).order_by('-updated_at')[:100000]
-    results = set()
+    results = []
     html_string = ""
     for position_log in position_logs:
         timestamp = position_log.timestamp or position_log.updated_at
         timestamp = timestamp - timedelta(days = 1)
         timestamp = timestamp.astimezone(tz).strftime("%Y-%m-%d")
-        results.add((position_log.station_id,timestamp))
+        entry = (position_log.station_id,timestamp)
+        if entry not in results: results.append(entry)
     for (id, date) in results:
         station = Station.objects.get(pk=id)
         html_string += f'<br><a href="/?name={station.name}&after_date={date}">{station.name} on {date}</a></br>'
