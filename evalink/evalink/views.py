@@ -1,4 +1,4 @@
-from django.http import JsonResponse, HttpResponseNotFound
+from django.http import JsonResponse, HttpResponseNotFound, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from evalink.models import *
@@ -255,12 +255,13 @@ def search(request):
     position_logs = PositionLog.objects.filter(
             Q(latitude__gt=latitude1) & Q(latitude__lt=latitude2) & Q(longitude__gt=longitude1) & Q(longitude__lt=longitude2)).order_by('updated_at')
     results = set()
-    items = []
+    html_string = ""
     for position_log in position_logs:
         timestamp = position_log.timestamp or position_log.updated_at
+        timestamp = timestamp - timedelta(days = 1)
         timestamp = timestamp.astimezone(tz).strftime("%Y-%m-%d")
         results.add((position_log.station_id,timestamp))
     for (id, date) in results:
         station = Station.objects.get(pk=id)
-        items.append(f'/?name={station.name}&before_date={date}')
-    return JsonResponse({'items': items}, json_dumps_params={'indent': 2})
+        html_string += f'<br><a href="/?name={station.name}&after_date={date}">{station.name} on {date}</a></br>'
+    return HttpResponse(html_string)
