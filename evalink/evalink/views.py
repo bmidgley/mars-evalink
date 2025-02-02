@@ -266,7 +266,7 @@ def search(request):
     for (id, date, after_date) in results:
         station = Station.objects.get(pk=id)
         if station and station.station_type != 'ignore':
-            url = f'/?name={station.name}&after_date={after_date}'
+            url = f'/?history=1&name={station.name}&after_date={after_date}'
             name = f'{station.name} on {date}'
             paths.append({'name': name, 'url': url})
     return JsonResponse({'items': paths}, json_dumps_params={'indent': 2})

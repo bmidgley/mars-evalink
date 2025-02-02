@@ -338,7 +338,7 @@
         <button type="button" onclick="populateHistory()">
             Search area...
         </button>
-        <select id="historyDropdown" onChange="window.location = this.options[this.selectedIndex].value;">
+        <select id="historyDropdown" onChange="populateUrlPath(this.options[this.selectedIndex].value);">
         </select>
     </div>
 
@@ -603,6 +603,15 @@
             });
 
             // markerList.appendChild(downloadJsonButton);
+        }
+
+        function populateUrlPath(url) {
+            const queryParams = new URLSearchParams(url);
+            const params = {};
+            for (const [key, value] of queryParams.entries()) {
+                params[key] = value;
+            }
+            populatePath(params.name, params.before_date, params.after_date)
         }
 
         async function populatePath(name, before_date, after_date) {
