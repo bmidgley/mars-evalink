@@ -677,7 +677,7 @@
             moveMarkerToCoordinates(coordinates[index]);
 
             const geo = ol.proj.toLonLat(coordinates[index]);
-            selectedCoordinate.innerHTML = `${geo[1]},${geo[0]}`;
+            selectedCoordinate.innerHTML = `<a href="http://maps.google.com/maps?z=12&t=k&q=loc:${geo[1]}+${geo[0]}" target="_blank">${geo[1]},${geo[0]}</a>`;
         };
 
         function showTimeSlider(name, url) {
