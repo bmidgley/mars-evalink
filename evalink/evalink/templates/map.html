@@ -306,10 +306,6 @@
                 <span class="bi bi-next">>></span>
             </button>
         </div>
-        <button id="emergency-button" title="Emergency Signal" onclick="sendEmergencySignal()">
-            <img id="emergency-icon" src="https://img.icons8.com/ios-filled/50/000000/siren.png" height="30"
-                width="30" />
-        </button>
         <button id="download-button" title="Download Tracks For Selection">
             <img src="https://img.icons8.com/material-outlined/24/000000/download.png" height="30" width="30" />
         </button>
@@ -692,10 +688,12 @@
             document.getElementById('batteryTimeSlider').innerHTML = battery_text(battery, time);
 
             const emergencyIcon = document.getElementById('emergency-icon');
-            if (emergencyList.includes(name)) {
-                emergencyIcon.src = 'https://img.icons8.com/ios-filled/50/FF0000/siren.png';
-            } else {
-                emergencyIcon.src = 'https://img.icons8.com/ios-filled/50/000000/siren.png';
+            if(emergencyIcon) {
+                if (emergencyList.includes(name)) {
+                    emergencyIcon.src = 'https://img.icons8.com/ios-filled/50/FF0000/siren.png';
+                } else {
+                    emergencyIcon.src = 'https://img.icons8.com/ios-filled/50/000000/siren.png';
+                }
             }
 
             timeSlider.disabled = times.length <= 1;
