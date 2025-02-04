@@ -528,7 +528,8 @@
                         const id = feature.get('id');
                         const name = feature.get('name');
                         const time = feature.get('time');
-                        const battery = feature.get('battery_level')
+                        const battery = feature.get('battery_level');
+                        const temperature = feature.get('temperature');
                         const coordinates = feature.getGeometry().getCoordinates();
 
                         if (feature.get('node_type') == 'person' && feature.get('distance') > 0) {
@@ -542,6 +543,7 @@
                                     coordinates: [],
                                     id: id,
                                     battery: battery,
+                                    temperature: temperature,
                                     time: time,
                                 };
                             }
@@ -644,10 +646,14 @@
             window.current_date = data.date;
         }
 
-        function battery_text(battery, isotime) {
+        function battery_text(battery, temperature, isotime) {
             if(battery == null) return "No internal battery"
             if(battery == 101) return `Plugged in, charged -- ${battery_age(isotime)}`
-            return `${battery}% -- ${battery_age(isotime)}`
+            temperature_text = "";
+            if(temperature) {
+                temperature_text = `${temperature.toFixed(1)}c `;
+            }
+            return `${battery}% ${temperature_text}-- ${battery_age(isotime)}`
         }
 
         function battery_age(isotime) {
@@ -680,12 +686,13 @@
             const times = markerData[name].times;
             const coordinates = markerData[name].coordinates;
             const battery = markerData[name].battery;
+            const temperature = markerData[name].temperature;
             const time = markerData[name].time;
             const timeSliderContainer = document.getElementById('time-slider-container');
             const timeSlider = document.getElementById('time-slider');
             const closeButton = document.getElementById('time-slider-close')
             document.getElementById('nameTimeSlider').innerHTML = `<a id="nameTimeSliderName" href="${url}">${name}</a>`;
-            document.getElementById('batteryTimeSlider').innerHTML = battery_text(battery, time);
+            document.getElementById('batteryTimeSlider').innerHTML = battery_text(battery, temperature, time);
 
             const emergencyIcon = document.getElementById('emergency-icon');
             if(emergencyIcon) {
