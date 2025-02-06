@@ -823,7 +823,7 @@
             source: vectorSource,
             style: function (feature) {
                 const eva_lost = (feature.get('distance') > 0 && feature.get('hours_old') > 1);
-                const untracked = feature.get('hours_old') > 48;
+                const untracked = feature.get('hours_old') > 12;
                 const emergency = feature.get('emergency') || untracked || eva_lost;
                 const nodeType = feature.get('node_type')
                 const coordinates = feature.getGeometry().getCoordinates();
