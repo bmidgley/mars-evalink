@@ -90,3 +90,9 @@ EOF
 sudo systemctl start evalink
 sudo systemctl enable evalink
 ```
+
+## Test standalone
+```
+cd mars-evalink/evalink
+DJANGO_SETTINGS_MODULE=evalink.settings gunicorn evalink.wsgi
+```
