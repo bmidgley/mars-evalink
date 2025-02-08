@@ -96,3 +96,7 @@ sudo systemctl enable evalink
 cd mars-evalink/evalink
 DJANGO_SETTINGS_MODULE=evalink.settings gunicorn evalink.wsgi
 ```
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
