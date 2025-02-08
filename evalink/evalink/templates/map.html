@@ -271,7 +271,7 @@
 
 <body>
     <div id="map">
-        <a href="https://www.maptiler.com" style="position:absolute;left:10px;bottom:10px;z-index:999;"><img
+        <a href="https://www.maptiler.com" style="position:absolute;right:250px;bottom:8px;z-index:999;"><img
                 src="https://api.maptiler.com/resources/logo.svg" alt="MapTiler logo"></a>
         <div id="info"></div>
     </div>
@@ -387,6 +387,7 @@
         const attribution = new ol.control.Attribution({
             collapsible: false,
         });
+        const scaleLine = new ol.control.ScaleLine();
 
         layerName = localStorage.getItem("layerName") || "topo"
         const source = new ol.source.TileJSON({
@@ -854,7 +855,7 @@
             target: 'map',
             controls: ol.control.defaults.defaults({
                 attribution: false,
-            }).extend([attribution]),
+            }).extend([attribution, scaleLine]),
             layers: [
                 new ol.layer.Tile({
                     source: source,
