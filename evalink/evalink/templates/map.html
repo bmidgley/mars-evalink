@@ -365,7 +365,13 @@
     </div>
 
     <script>
+        let clipboarding = false;
         if (Notification.permission !== "denied" && Notification.permission !== "granted") Notification.requestPermission();
+        navigator.permissions.query({ name: "clipboard-write" }).then((result) => {
+            if (result.state === "granted" || result.state === "prompt") {
+                clipboarding = true;
+            }
+        });
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -680,7 +686,10 @@
             moveMarkerToCoordinates(coordinates[index]);
 
             const geo = ol.proj.toLonLat(coordinates[index]);
-            selectedCoordinate.innerHTML = `<a href="http://maps.google.com/maps?z=12&t=k&q=loc:${geo[1]}+${geo[0]}" target="_blank">${geo[1]},${geo[0]}</a>`;
+            selectedCoordinate.innerHTML = `
+                <a href="http://maps.google.com/maps?z=12&t=k&q=loc:${geo[1]}+${geo[0]}" target="_blank">${geo[1]},${geo[0]}</a>
+                <button onclick="if(clipboarding){navigator.clipboard.writeText('${geo[1]},${geo[0]}');window.alert('copied ${geo[1]},${geo[0]}');}">Copy</button>
+            `;
         };
 
         function showTimeSlider(name, url) {
