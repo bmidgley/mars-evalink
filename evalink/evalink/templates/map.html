@@ -878,6 +878,14 @@
             }),
         });
 
+        document.addEventListener('keydown', function(event) {
+            if(event.key == "z") map.getView().setRotation(Math.PI);
+        });
+
+        document.addEventListener('keyup', function(event) {
+            if(event.key == "z") map.getView().setRotation(0);
+        });
+
         const overlay = new ol.Overlay({
             element: document.createElement('div'),
             positioning: 'bottom-center',
