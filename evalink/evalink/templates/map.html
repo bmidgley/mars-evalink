@@ -538,8 +538,9 @@
                         const battery = feature.get('battery_level');
                         const temperature = feature.get('temperature');
                         const coordinates = feature.getGeometry().getCoordinates();
+                        const days_old = feature.get('days_old') || 0;
 
-                        if (feature.get('node_type') == 'person' && feature.get('distance') > 0) {
+                        if (feature.get('node_type') == 'person' && feature.get('distance') > 0 && days_old > 1) {
                             onEva.push(name)
                         }
 
