@@ -659,7 +659,7 @@
             if(temperature) {
                 temperature_text = `${temperature.toFixed(1)}c `;
             }
-            if(battery == null) return `No internal battery ${temperature_text}`
+            if(battery == null) return `No internal battery ${temperature_text}-- ${battery_age(isotime)}`
             if(battery == 101) return `Plugged in, charged ${temperature_text}-- ${battery_age(isotime)}`
             return `${battery}% ${temperature_text}-- ${battery_age(isotime)}`
         }
