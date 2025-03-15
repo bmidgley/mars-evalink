@@ -550,11 +550,11 @@
                                     times: [],
                                     coordinates: [],
                                     id: id,
-                                    battery: battery,
-                                    temperature: temperature,
-                                    time: time,
                                 };
                             }
+                            markerData[name].time = time;
+                            markerData[name].temperature = temperature;
+                            markerData[name].battery = battery;
                         }
 
                         if (emergencyList.includes(name)) {

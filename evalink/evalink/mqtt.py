@@ -12,8 +12,6 @@ def on_connect(client, _userdata, _flags, _rc):
 
 def on_disconnect(client, _userdata, _rc):
     print("on_disconnect?")
-    time.sleep(1)
-    client.connect(os.getenv('MQTT_SERVER'), int(os.getenv('MQTT_PORT')), 60)
 
 def on_message(_client, _userdata, msg):
     message = json.loads(msg.payload)
