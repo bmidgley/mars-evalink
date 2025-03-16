@@ -366,7 +366,7 @@
 
     <script>
         let clipboarding = false;
-        if (Notification.permission !== "denied" && Notification.permission !== "granted") Notification.requestPermission();
+//        if (Notification.permission !== "denied" && Notification.permission !== "granted") Notification.requestPermission();
         navigator.permissions.query({ name: "clipboard-write" }).then((result) => {
             if (result.state === "granted" || result.state === "prompt") {
                 clipboarding = true;
@@ -508,6 +508,12 @@
                     const content = message.station + ': ' + message.text;
                     if (Notification.permission === "granted") {
                         if(!firstRun) { new Notification(content) }
+                    } else if (Notification.permission !== "denied") {
+                        Notification.requestPermission().then((permission) => {
+                            if (permission === "granted") {
+                                new Notification(content)
+                            }
+                        });
                     }
                     window.seenTextId = message.id;
                 }
@@ -565,10 +571,16 @@
                     });
                     if(window.evaAlerted == undefined) window.evaAlerted = Date.now();
                     if(onEva.length > 0) {
-                        if(Date.now() - window.evaAlerted > 1000 * 60 * 10) {
+                        if(Date.now() - window.evaAlerted > 1000 * 600 && document.visibilityState !== "visible") {
                             const content = `On EVA: ${onEva.join()}`
                             if (Notification.permission === "granted") {
                                 new Notification(content)
+                            } else if (Notification.permission !== "denied") {
+                                Notification.requestPermission().then((permission) => {
+                                    if (permission === "granted") {
+                                        new Notification(content)
+                                    }
+                                });
                             }
                             window.evaAlerted = Date.now();
                         }
