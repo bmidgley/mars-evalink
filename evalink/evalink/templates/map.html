@@ -635,7 +635,8 @@
         async function populatePath(name, before_date, after_date) {
             vectorTrackSource.clear();
             var prefix = "/path.json?"
-            var params = `name=${name}&id=${markerData[name].id}`
+            const base_params = `name=${name}&id=${markerData[name].id}`
+            var params = base_params;
             if(before_date) params += "&before_date=" + before_date
             if(after_date) params += "&after_date=" + after_date
             var response = await fetch(`${prefix}${params}`);
@@ -661,7 +662,7 @@
                 geometry : route,
             });
             vectorTrackSource.addFeature(feature);
-            showTimeSlider(name, `${window.location.origin}${window.location.pathname}?${params}`);
+            showTimeSlider(name, `${window.location.pathname}?${params}`, `${window.location.pathname}?${base_params}`);
             window.current_name = name;
             window.current_date = data.date;
         }
@@ -705,7 +706,7 @@
             `;
         };
 
-        function showTimeSlider(name, url) {
+        function showTimeSlider(name, url, base_url) {
             const times = markerData[name].times;
             const coordinates = markerData[name].coordinates;
             const battery = markerData[name].battery;
@@ -715,7 +716,7 @@
             const timeSlider = document.getElementById('time-slider');
             const closeButton = document.getElementById('time-slider-close')
             document.getElementById('nameTimeSlider').innerHTML = `<a id="nameTimeSliderName" href="${url}">${name}</a>`;
-            document.getElementById('batteryTimeSlider').innerHTML = battery_text(battery, temperature, time);
+            document.getElementById('batteryTimeSlider').innerHTML = `${battery_text(battery, temperature, time)} <a href="${base_url}">(go to newest track)</a>`;
 
             const emergencyIcon = document.getElementById('emergency-icon');
             if(emergencyIcon) {
