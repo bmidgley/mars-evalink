@@ -305,6 +305,7 @@
             <button id="following-day" type="button" class="btn" title="Display following day's tracks" onclick="populatePath(window.current_name, null, window.current_date)">
                 <span class="bi bi-next">>></span>
             </button>
+            <span id="latestLink"></span>
         </div>
         <button id="download-button" title="Download Tracks For Selection">
             <img src="https://img.icons8.com/material-outlined/24/000000/download.png" height="30" width="30" />
@@ -716,7 +717,8 @@
             const timeSlider = document.getElementById('time-slider');
             const closeButton = document.getElementById('time-slider-close')
             document.getElementById('nameTimeSlider').innerHTML = `<a id="nameTimeSliderName" href="${url}">${name}</a>`;
-            document.getElementById('batteryTimeSlider').innerHTML = `${battery_text(battery, temperature, time)} <a href="${base_url}">(jump to latest)</a>`;
+            document.getElementById('batteryTimeSlider').innerHTML = battery_text(battery, temperature, time);
+            document.getElementById('latestLink').innerHTML = `<a href="${base_url}">(see latest)</a>`;
 
             const emergencyIcon = document.getElementById('emergency-icon');
             if(emergencyIcon) {
