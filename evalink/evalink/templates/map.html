@@ -701,9 +701,11 @@
             moveMarkerToCoordinates(coordinates[index]);
 
             const geo = ol.proj.toLonLat(coordinates[index]);
+            const lat = geo[1].toFixed(7)
+            const lon = geo[0].toFixed(7)
             selectedCoordinate.innerHTML = `
-                <a href="http://maps.google.com/maps?z=12&t=k&q=loc:${geo[1]}+${geo[0]}" target="_blank">${geo[1]},${geo[0]}</a>
-                <button onclick="if(clipboarding){navigator.clipboard.writeText('${geo[1]},${geo[0]}');window.alert('copied ${geo[1]},${geo[0]}');}">Copy</button>
+                <a href="http://maps.google.com/maps?z=12&t=k&q=loc:${lat}+${lon}" target="_blank">${lat},${lon}</a>
+                <button onclick="if(clipboarding){navigator.clipboard.writeText('${lat},${lon}');window.alert('copied ${lat},${lon}');}">Copy</button>
             `;
         };
 
@@ -946,7 +948,9 @@
             });
             const geo = ol.proj.toLonLat(map.getCoordinateFromPixel(pixel));
             const geo_el = document.getElementById("geo-coordinates");
-            geo_el.innerHTML = `${geo[1]},${geo[0]}`;
+            const lat = geo[1].toFixed(7)
+            const lon = geo[0].toFixed(7)
+            geo_el.innerHTML = `${lat},${lon}`;
 
             if(feature && !feature.get("name") && feature.get("label")) {
                 info.style.left = event.pixel[0] + 'px';
