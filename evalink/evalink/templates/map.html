@@ -708,7 +708,7 @@
                 var line = new ol.geom.LineString([coordinates[index], coordinates[index-1]]);
                 var meters = ol.sphere.getLength(line);
                 var seconds = (Date.parse(times[index]) - Date.parse(times[index-1])) / 1000
-                if(seconds > 0) speed = (3.6 * (meters / seconds)).toFixed(2)
+                if(seconds > 0) speed = (3.6 * (meters / seconds)).toFixed(1)
             }
 
             selectedTime.textContent = `Time: ${formattedDate(selected)} ${speed}kph`;
