@@ -709,7 +709,8 @@
                 var meters = ol.sphere.getLength(line);
                 var seconds = (Date.parse(times[index]) - Date.parse(times[index-1])) / 1000
                 if(seconds > 0) speed = (3.6 * (meters / seconds)).toFixed(1)
-                if(speed < 0.1 || speed > 10) speed = speed.toFixed(0)
+                if(speed < 0.1) speed = 0;
+                if(speed > 10) speed = speed.toFixed(0)
             }
 
             selectedTime.textContent = `Time: ${formattedDate(selected)} ${speed}kph`;
