@@ -305,6 +305,7 @@
             <button id="following-day" type="button" class="btn" title="Display following day's tracks" onclick="populatePath(window.current_name, null, window.current_date)">
                 <span class="bi bi-next">>></span>
             </button>
+            <br>
             <span id="latestLink"></span>
         </div>
         <button id="download-button" title="Download Tracks For Selection">
@@ -367,7 +368,6 @@
 
     <script>
         let clipboarding = false;
-//        if (Notification.permission !== "denied" && Notification.permission !== "granted") Notification.requestPermission();
         navigator.permissions.query({ name: "clipboard-write" }).then((result) => {
             if (result.state === "granted" || result.state === "prompt") {
                 clipboarding = true;
@@ -696,13 +696,22 @@
         function updateSliderStats(times, coordinates, value) {
             const index = parseInt(value, 10);
             const selected = times[index];
-            selectedTime.textContent = `Time: ${formattedDate(selected)}`;
 
             moveMarkerToCoordinates(coordinates[index]);
 
             const geo = ol.proj.toLonLat(coordinates[index]);
-            const lat = geo[1].toFixed(7)
-            const lon = geo[0].toFixed(7)
+            const lat = geo[1].toFixed(7);
+            const lon = geo[0].toFixed(7);
+            var speed = 0;
+
+            if(index > 0) {
+                var line = new ol.geom.LineString([coordinates[index], coordinates[index-1]]);
+                var meters = ol.sphere.getLength(line);
+                var seconds = (Date.parse(times[index]) - Date.parse(times[index-1])) / 1000
+                if(seconds > 0) speed = (3.6 * (meters / seconds)).toFixed(2)
+            }
+
+            selectedTime.textContent = `Time: ${formattedDate(selected)} ${speed}kph`;
             selectedCoordinate.innerHTML = `
                 <a href="http://maps.google.com/maps?z=12&t=k&q=loc:${lat}+${lon}" target="_blank">${lat},${lon}</a>
                 <button onclick="if(clipboarding){navigator.clipboard.writeText('${lat},${lon}');window.alert('copied ${lat},${lon}');}">Copy</button>
