@@ -717,7 +717,7 @@
                 }
             }
 
-            selectedTime.textContent = `Time: ${formattedDate(selected)} ${speed}kph`;
+            selectedTime.textContent = `${formattedDate(selected)} -- ${speed}kph`;
             selectedCoordinate.innerHTML = `
                 <a href="http://maps.google.com/maps?z=12&t=k&q=loc:${lat}+${lon}" target="_blank">${lat},${lon}</a>
                 <button onclick="if(clipboarding){navigator.clipboard.writeText('${lat},${lon}');window.alert('copied ${lat},${lon}');}">Copy</button>
