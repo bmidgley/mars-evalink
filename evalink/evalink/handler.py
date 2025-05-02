@@ -70,6 +70,10 @@ def process_message(message):
             "temperature": None,
             "relative_humidity": None,
             "barometric_pressure": None,
+            "wind_direction": None,
+            "wind_speed": None,
+            "wind_gust": None,
+            "wind_lull": None,
             "battery_level": None,
             "voltage": None,
             "current": None,
@@ -123,6 +127,10 @@ def process_message(message):
             temperature=payload.get('temperature'),
             relative_humidity=payload.get('relative_humidity'),
             barometric_pressure=payload.get('barometric_pressure'),
+            wind_direction=payload.get('wind_direction'),
+            wind_speed=payload.get('wind_speed'),
+            wind_gust=payload.get('wind_gust'),
+            wind_lull=payload.get('wind_lull'),
             battery_level=payload.get('battery_level'),
             voltage=payload.get('voltage'),
             current=payload.get('current'),
@@ -131,6 +139,10 @@ def process_message(message):
         station.features["properties"]["temperature"] = telemetry_log.temperature or station.features["properties"].get("temperature")
         station.features["properties"]["relative_humidity"] = telemetry_log.relative_humidity or station.features["properties"].get("relative_humidity")
         station.features["properties"]["barometric_pressure"] = telemetry_log.barometric_pressure or station.features["properties"].get("barometric_pressure")
+        station.features["properties"]["wind_direction"] = telemetry_log.wind_direction or station.features["properties"].get("wind_direction")
+        station.features["properties"]["wind_speed"] = telemetry_log.wind_speed or station.features["properties"].get("wind_speed")
+        station.features["properties"]["wind_gust"] = telemetry_log.wind_gust or station.features["properties"].get("wind_gust")
+        station.features["properties"]["wind_lull"] = telemetry_log.wind_lull or station.features["properties"].get("wind_lull")
         station.features["properties"]["battery_level"] = telemetry_log.battery_level or station.features["properties"].get("battery_level")
         station.features["properties"]["voltage"] = telemetry_log.voltage or station.features["properties"].get("voltage")
         station.features["properties"]["current"] = telemetry_log.current or station.features["properties"].get("current")
