@@ -92,10 +92,21 @@ def path(request):
     if position_log:
         found_date = position_log.updated_at.astimezone(timezone.get_current_timezone()).date()
         result['date'] = found_date
-        position_logs = PositionLog.objects.filter(station=station, updated_at__date=found_date).filter(
-                                                  Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('timestamp', 'updated_at').all()
+        position_logs = list(PositionLog.objects.filter(station=station, updated_at__date=found_date).filter(
+                                                  Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('timestamp', 'updated_at').all())
+        weather_logs = list(TelemetryLog.objects.filter(station=station, updated_at__date=found_date, wind_speed__isnull=False, wind_direction__isnull=False).order_by('updated_at').all())
+        if weather_logs == []:
+            weather_logs = list(TelemetryLog.objects.filter(station=station, updated_at__date=found_date).order_by('updated_at').all())
+
         for log in position_logs:
-            result['points'].append({'latitude': log.latitude, 'longitude': log.longitude, 'altitude': log.altitude, 'updated_at': log.updated_at})
+            sample = closest(log.updated_at, weather_logs)
+            event = {'latitude': log.latitude, 'longitude': log.longitude, 'altitude': log.altitude, 'updated_at': log.updated_at}
+            if sample:
+                if(sample.wind_speed != None): event['wind_speed'] = sample.wind_speed
+                if(sample.wind_direction != None): event['wind_direction'] = sample.wind_direction
+                event['temperature'] = sample.temperature
+            result['points'].append(event)
+
         text_logs = TextLog.objects.filter(station=station, updated_at__date=found_date).order_by('updated_at').all()
         for text in text_logs:
             if text.position_log:
@@ -103,6 +114,19 @@ def path(request):
     else:
         result['date'] = before_date.isoformat()[0:10]
     return JsonResponse(result, json_dumps_params={'indent': 2})
+
+def closest(time, samples):
+    if samples == []: return None
+    last_delta = abs(samples[0].updated_at - time)
+    last_sample = samples[0]
+    for sample in samples[1:]:
+        delta = abs(sample.updated_at - time)
+        if delta > last_delta:
+            return last_sample
+        last_sample = sample
+        last_delta = delta
+
+    return samples[-1]
 
 def localdate(label, my_date, default):
     if my_date == None:

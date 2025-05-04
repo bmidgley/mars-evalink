@@ -306,6 +306,7 @@
                 <span class="bi bi-next">>></span>
             </button>
             <br>
+            <div id="selected-sample"></div>
             <span id="latestLink"></span>
         </div>
         <button id="download-button" title="Download Tracks For Selection">
@@ -410,6 +411,7 @@
         let deviceCrew = [];
         let waypoints = [];
         const selectedTime = document.getElementById('selected-time');
+        const selectedSample = document.getElementById('selected-sample');
         const selectedCoordinate = document.getElementById('time-slider-coordinates');
 
         function formattedDate(date_string) {
@@ -645,6 +647,7 @@
             markerData[name].coordinates = [];
             markerData[name].times = [];
             markerData[name].altitudes = [];
+            markerData[name].samples = [];
             markerData[name].waypoints = data.waypoints;
             markerData[name].hardware_name = data.hardware_name;
             var pointList = [];
@@ -654,6 +657,7 @@
                 pointList.push([point.longitude, point.latitude]);
                 markerData[name].coordinates.push(projection);
                 markerData[name].times.push(point.updated_at);
+                markerData[name].samples.push({wind_speed: point.wind_speed, wind_direction: point.wind_direction, temperature: point.temperature})
                 if(altitude) markerData[name].altitudes.push(altitude);
             }
             waypoints = data.waypoints;
@@ -671,7 +675,7 @@
         function battery_text(battery, temperature, isotime) {
             temperature_text = "";
             if(temperature) {
-                temperature_text = `${temperature.toFixed(1)}c `;
+                temperature_text = `${temperature.toFixed(1)}°c `;
             }
             if(battery == null) return `No internal battery ${temperature_text}-- ${battery_age(isotime)}`
             if(battery == 101) return `Plugged in, charged ${temperature_text}-- ${battery_age(isotime)}`
@@ -693,9 +697,10 @@
             }
         }
 
-        function updateSliderStats(times, coordinates, value) {
+        function updateSliderStats(times, coordinates, samples, value) {
             const index = parseInt(value, 10);
             const selected = times[index];
+            const sample = samples[index];
 
             moveMarkerToCoordinates(coordinates[index]);
 
@@ -718,6 +723,16 @@
             }
 
             selectedTime.textContent = `${formattedDate(selected)} -- ${speed}kph`;
+            if(sample && sample.temperature !== null) {
+                var windiness = "";
+                if(typeof sample.wind_speed !== "undefined" && typeof sample.wind_direction !== "undefined") {
+                    windiness = ` (${sample.wind_speed.toFixed(1)}m/s ${sample.wind_direction}°)`;
+                }
+                const sampleText = `${sample.temperature.toFixed(1)}°c${windiness}`
+                selectedSample.innerHTML = sampleText;
+            } else
+                selectedSample.innerHTML = "";
+
             selectedCoordinate.innerHTML = `
                 <a href="http://maps.google.com/maps?z=12&t=k&q=loc:${lat}+${lon}" target="_blank">${lat},${lon}</a>
                 <button onclick="if(clipboarding){navigator.clipboard.writeText('${lat},${lon}');window.alert('copied ${lat},${lon}');}">Copy</button>
@@ -729,6 +744,7 @@
             const coordinates = markerData[name].coordinates;
             const battery = markerData[name].battery;
             const temperature = markerData[name].temperature;
+            const samples = markerData[name].samples
             const time = markerData[name].time;
             const timeSliderContainer = document.getElementById('time-slider-container');
             const timeSlider = document.getElementById('time-slider');
@@ -752,7 +768,7 @@
             timeSlider.value = times.length - 1;
 
             timeSlider.oninput = function () {
-                updateSliderStats(times, coordinates, timeSlider.value);
+                updateSliderStats(times, coordinates, samples, timeSlider.value);
             };
 
             closeButton.onclick = function() {
@@ -760,7 +776,7 @@
             }
 
             timeSliderContainer.style.display = 'block';
-            updateSliderStats(times, coordinates, timeSlider.value);
+            updateSliderStats(times, coordinates, samples, timeSlider.value);
         }
 
         function createSvgDataURL(nodeType, r, g, b) {
