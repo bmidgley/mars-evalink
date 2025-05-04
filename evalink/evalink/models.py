@@ -52,6 +52,7 @@ class PositionLog(models.Model):
     updated_at = models.DateTimeField(null=False, db_index=True)
 
 class TelemetryLog(models.Model):
+    message_id = models.BigIntegerField(db_index=True, null=True)
     station = models.ForeignKey(Station, on_delete=models.CASCADE, db_index=True)
     position_log = models.ForeignKey(PositionLog, on_delete=models.SET_NULL, null=True, db_index=True)
     temperature = models.FloatField(null=True)

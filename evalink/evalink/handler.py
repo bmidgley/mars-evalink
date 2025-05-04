@@ -2,6 +2,7 @@ import django
 django.setup()
 
 from evalink.models import *
+from django.db import IntegrityError
 from datetime import datetime
 import pytz
 
@@ -122,6 +123,7 @@ def process_message(message):
 
     if message['type'] == 'telemetry':
         telemetry_log = TelemetryLog(
+            message_id=message['id'],
             station=station,
             position_log=station.last_position,
             temperature=payload.get('temperature'),
@@ -135,7 +137,11 @@ def process_message(message):
             voltage=payload.get('voltage'),
             current=payload.get('current'),
             updated_at=time)
-        telemetry_log.save()
+        try:
+            telemetry_log.save()
+        except IntegrityError as e:
+            print(f"Skipping duplicate {payload}: {e}")
+            return
         station.features["properties"]["temperature"] = telemetry_log.temperature or station.features["properties"].get("temperature")
         station.features["properties"]["relative_humidity"] = telemetry_log.relative_humidity or station.features["properties"].get("relative_humidity")
         station.features["properties"]["barometric_pressure"] = telemetry_log.barometric_pressure or station.features["properties"].get("barometric_pressure")
