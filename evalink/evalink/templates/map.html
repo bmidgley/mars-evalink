@@ -860,7 +860,7 @@
             vectorSource.getFeatures().forEach(feature => {
                 const name = feature.get('name');
                 if (name) {
-                    if (name in markerData && markerData[name].coordinates.length > 0) {
+                    if (name in markerData && markerData[name].coordinates.length > 0 && window.current_name == name) {
                         feature.getGeometry().setCoordinates(coordinates);
                     }
                 }
