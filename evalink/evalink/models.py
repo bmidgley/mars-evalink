@@ -42,9 +42,10 @@ class StationMeasure(models.Model):
     updated_at = models.DateTimeField(null=False, db_index=True)
 
 class PositionLog(models.Model):
+    message_id = models.BigIntegerField(db_index=True, null=True)
     station = models.ForeignKey(Station, on_delete=models.CASCADE, db_index=True)
-    latitude = models.FloatField()
-    longitude = models.FloatField()
+    latitude = models.FloatField(db_index=True)
+    longitude = models.FloatField(db_index=True)
     altitude = models.FloatField(null=True)
     ground_speed = models.FloatField(null=True)
     ground_track = models.FloatField(null=True)
