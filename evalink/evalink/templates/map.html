@@ -728,8 +728,9 @@
                 if(typeof sample.wind_speed !== "undefined" && typeof sample.wind_direction !== "undefined") {
                     windiness = ` (${sample.wind_speed.toFixed(1)}m/s ${sample.wind_direction}°)`;
                 }
-                const sampleText = `${sample.temperature.toFixed(1)}°c${windiness}`
-                selectedSample.innerHTML = sampleText;
+                var sampleText = "";
+                if(typeof sample.temperature !== 'undefined') sampleText = `${sample.temperature.toFixed(1)}°c`;
+                selectedSample.innerHTML = `${sampleText}${windiness}`;
             } else
                 selectedSample.innerHTML = "";
 
