@@ -699,6 +699,7 @@
 
         function updateSliderStats(times, coordinates, samples, value) {
             const index = parseInt(value, 10);
+            if(coordinates.length <= index) return;
             const selected = times[index];
             const sample = samples[index];
 
