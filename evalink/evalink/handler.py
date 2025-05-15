@@ -5,6 +5,7 @@ from evalink.models import *
 from django.db import IntegrityError
 from datetime import datetime
 import pytz
+import os
 
 def process_message(message):
     number = message['from']
@@ -96,6 +97,8 @@ def process_message(message):
         if lat == 0 or lon == 0: return
         ground_track = payload.get('ground_track')
         if ground_track: ground_track = ground_track / 100000
+        fence = Campus.objects.get(name=os.getenv('CAMPUS')).inner_geofence
+        if lat > fence.latitude1 and lat < fence.latitude2 and lon > fence.longitude1 and lon < fence.longitude2: return
         position_log = PositionLog(
             station=station,
             latitude=lat,
@@ -140,7 +143,6 @@ def process_message(message):
         try:
             telemetry_log.save()
         except IntegrityError as e:
-            print(f"Skipping duplicate {payload}: {e}")
             return
         station.features["properties"]["temperature"] = telemetry_log.temperature or station.features["properties"].get("temperature")
         station.features["properties"]["relative_humidity"] = telemetry_log.relative_humidity or station.features["properties"].get("relative_humidity")
