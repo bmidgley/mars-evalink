@@ -11,7 +11,7 @@ def on_connect(client, _userdata, _flags, _rc):
     client.subscribe(f'{os.getenv("MQTT_TOPIC")}/+/json/#')
 
 def on_disconnect(client, _userdata, _rc):
-    print("on_disconnect?")
+    pass #print("on_disconnect?")
 
 def on_message(_client, _userdata, msg):
     message = json.loads(msg.payload)

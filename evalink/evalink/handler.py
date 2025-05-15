@@ -98,7 +98,6 @@ def process_message(message):
         ground_track = payload.get('ground_track')
         if ground_track: ground_track = ground_track / 100000
         fence = Campus.objects.get(name=os.getenv('CAMPUS')).inner_geofence
-        if lat > fence.latitude1 and lat < fence.latitude2 and lon > fence.longitude1 and lon < fence.longitude2: return
         position_log = PositionLog(
             station=station,
             latitude=lat,
@@ -108,7 +107,6 @@ def process_message(message):
             ground_track=ground_track,
             timestamp=timestamp or time,
             updated_at=time)
-        position_log.save()
         if "geometry" not in station.features: station.features["geometry"] = {"type": "Point"}
         station.features["type"] = "Feature"
         station.features["geometry"]["type"] = "Point"
@@ -122,6 +120,8 @@ def process_message(message):
         station.updated_at = time
         station.save()
         log_measurements(station, station.features, time)
+        if lat < fence.latitude1 or lat > fence.latitude2 or lon < fence.longitude1 or lon > fence.longitude2:
+            position_log.save()
         return
 
     if message['type'] == 'telemetry':
