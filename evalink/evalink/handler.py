@@ -3,7 +3,7 @@ django.setup()
 
 from evalink.models import *
 from django.db import IntegrityError
-from datetime import datetime
+from datetime import datetime, time
 import pytz
 import os
 
@@ -12,7 +12,7 @@ def process_message(message):
     payload = message['payload']
     tz = pytz.timezone("US/Mountain")
     timezone.now()
-    time = datetime.now(tz)
+    current_time = datetime.now(tz)
 
     station = Station.objects.filter(hardware_number=number).first()
 
@@ -37,14 +37,14 @@ def process_message(message):
                 hardware_node=payload['id'],
                 station_type=hardware.station_type,
                 short_name=(payload['shortname'] or 'blank!').replace('\x00', ''))
-            station.updated_at = time
+            station.updated_at = current_time
             try:
-                print(f'adding new station {station} at {time} number {number}')
+                print(f'adding new station {station} at {current_time} number {number}')
                 station.save()
             except django.db.utils.IntegrityError as e:
                 print(e)
                 return
-        station.updated_at = time
+        station.updated_at = current_time
         station.name = payload['longname'] or 'blank'
         station.name = station.name.replace("\x00", "")
         if station.features == None: station.features = {}
@@ -105,8 +105,13 @@ def process_message(message):
             altitude=payload.get('altitude'),
             ground_speed=payload.get('ground_speed'),
             ground_track=ground_track,
-            timestamp=timestamp or time,
-            updated_at=time)
+            timestamp=timestamp or current_time,
+            updated_at=current_time)
+        clock_time = datetime.now().time()
+        early_time = time(0, 30, 0)
+        if lat < fence.latitude1 or lat > fence.latitude2 or lon < fence.longitude1 or lon > fence.longitude2 or clock_time < early_time:
+            position_log.save()
+            station.last_position = position_log
         if "geometry" not in station.features: station.features["geometry"] = {"type": "Point"}
         station.features["type"] = "Feature"
         station.features["geometry"]["type"] = "Point"
@@ -116,12 +121,9 @@ def process_message(message):
         station.features["properties"]["ground_track"] = position_log.ground_track or station.features["properties"].get("ground_track")
         station.features["properties"]["node_type"] = station.hardware.station_type
         station.features["properties"]["time"] = iso_time(message['timestamp'])
-        station.last_position = position_log
-        station.updated_at = time
+        station.updated_at = current_time
         station.save()
-        log_measurements(station, station.features, time)
-        if lat < fence.latitude1 or lat > fence.latitude2 or lon < fence.longitude1 or lon > fence.longitude2:
-            position_log.save()
+        log_measurements(station, station.features, current_time)
         return
 
     if message['type'] == 'telemetry':
@@ -139,7 +141,7 @@ def process_message(message):
             battery_level=payload.get('battery_level'),
             voltage=payload.get('voltage'),
             current=payload.get('current'),
-            updated_at=time)
+            updated_at=current_time)
         try:
             telemetry_log.save()
         except IntegrityError as e:
@@ -156,9 +158,9 @@ def process_message(message):
         station.features["properties"]["current"] = telemetry_log.current or station.features["properties"].get("current")
         station.features["properties"]["node_type"] = station.hardware.station_type
         station.features["properties"]["time"] = iso_time(message['timestamp'])
-        station.updated_at = time
+        station.updated_at = current_time
         station.save()
-        log_measurements(station, station.features, time)
+        log_measurements(station, station.features, current_time)
         return
 
     if message['type'] == 'text':
@@ -169,20 +171,20 @@ def process_message(message):
             position_log=station.last_position,
             serial_number=message.get("id"), # + (hash(text) % 100000),
             text=text,
-            updated_at=time)
+            updated_at=current_time)
         text_log.save()
         if "texts" not in station.features["properties"]: station.features["properties"]["texts"] = [] # remove
         station.features["properties"]["texts"].append({
             "text": text_log.text,
             "coordinates": station.features["geometry"].get("coordinates"),
             "updated_at": iso_time(message['timestamp']) })
-        station.updated_at = time
+        station.updated_at = current_time
         station.save()
-        log_measurements(station, station.features, time)
+        log_measurements(station, station.features, current_time)
         return
 
-def log_measurements(station, features, time):
-    measure = StationMeasure(station=station, features=features, updated_at=time)
+def log_measurements(station, features, current_time):
+    measure = StationMeasure(station=station, features=features, updated_at=current_time)
     measure.save()
 
 def iso_time(_seconds):
