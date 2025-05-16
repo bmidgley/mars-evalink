@@ -109,7 +109,9 @@ def process_message(message):
             updated_at=current_time)
         clock_time = datetime.now().time()
         early_time = time(0, 30, 0)
-        if lat < fence.latitude1 or lat > fence.latitude2 or lon < fence.longitude1 or lon > fence.longitude2 or clock_time < early_time:
+        # log this location if it's away from the hab or if it represents returning to the hab
+        # or, if it's the first measurement of the day
+        if fence.outside(lat, lon) or station.outside(fence) or clock_time < early_time:
             position_log.save()
             station.last_position = position_log
         if "geometry" not in station.features: station.features["geometry"] = {"type": "Point"}

@@ -35,6 +35,8 @@ class Station(models.Model):
     hardware_number = models.BigIntegerField(db_index=True, unique=True)
     updated_at = models.DateTimeField(null=False, db_index=True)
     station_type = models.CharField(max_length=255)
+    def outside(self, fence):
+        return self.last_position and fence.outside(self.last_position.latitude, self.last_position.longitude)
 
 class StationMeasure(models.Model):
     station = models.ForeignKey(Station, on_delete=models.CASCADE, null=False, db_index=True)
@@ -100,6 +102,8 @@ class Geofence(models.Model):
     longitude1 = models.FloatField()
     latitude2 = models.FloatField()
     longitude2 = models.FloatField()
+    def outside(self, lat, lon):
+        return lat < self.latitude1 or lat > self.latitude2 or lon < self.longitude1 or lon > self.longitude2
 
 class Campus(models.Model):
     name = models.CharField(max_length=64, db_index=True, null=False)
