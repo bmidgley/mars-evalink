@@ -1017,6 +1017,12 @@
             evt.currentTarget.className += " active";
         }
 
+        function encodeXML(s) {
+            const dom = document.createElement('div')
+            dom.textContent = s
+            return dom.innerHTML
+        }
+
         function downloadSelected() {
             const name = document.getElementById('nameTimeSliderName').innerHTML;
             const data = markerData[name];
@@ -1027,8 +1033,8 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
     <metadata>
-        <name>${name}</name>
-        <desc>${name} tracks from ${data.times[0]} device ${data.hardware_name}</desc>
+        <name>${encodeXML(name)}</name>
+        <desc>${encodeXML(name)} tracks from ${data.times[0]} device ${data.hardware_name}</desc>
     </metadata>`;
                 const footer = `
         </trkseg>
@@ -1040,7 +1046,7 @@
                     body += `
     <wpt lat="${wp.latitude.toFixed(7)}" lon="${wp.longitude.toFixed(7)}">
         <time>${wp.updated_at}</time>
-        <name>${wp.text}</name>`
+        <name>${encodeXML(wp.text)}</name>`
                     if(wp.altitude)
                         body += `
         <ele>${wp.altitude}</ele>`;
@@ -1049,7 +1055,7 @@
                 }
                 body += `
     <trk>
-        <name>${name} from ${data.times[0]}</name>
+        <name>${encodeXML(name)} from ${data.times[0]}</name>
         <trkseg>`;
                 for(let i = 0; i < data.times.length; i++) {
                     coordinates = ol.proj.toLonLat(data.coordinates[i])
