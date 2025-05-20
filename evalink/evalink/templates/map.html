@@ -1038,7 +1038,7 @@
                 for(let i = 0; i < data.waypoints.length; i++) {
                     let wp = data.waypoints[i];
                     body += `
-    <wpt lat="${wp.latitude}" lon="${wp.longitude}">
+    <wpt lat="${wp.latitude.toFixed(7)}" lon="${wp.longitude.toFixed(7)}">
         <time>${wp.updated_at}</time>
         <name>${wp.text}</name>`
                     if(wp.altitude)
@@ -1054,7 +1054,7 @@
                 for(let i = 0; i < data.times.length; i++) {
                     coordinates = ol.proj.toLonLat(data.coordinates[i])
                     body += `
-            <trkpt lat="${coordinates[1]}" lon="${coordinates[0]}">
+            <trkpt lat="${coordinates[1].toFixed(7)}" lon="${coordinates[0].toFixed(7)}">
                 <time>${data.times[i]}</time>`;
                 if(data.altitudes[i]) body += `
                  <ele>${data.altitudes[i]}</ele>`;
