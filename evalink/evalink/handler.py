@@ -3,17 +3,18 @@ django.setup()
 
 from evalink.models import *
 from django.db import IntegrityError
-from datetime import datetime, time
+from datetime import datetime, timezone
 import pytz
 import os
 
 def process_message(message):
     number = message['from']
     payload = message['payload']
-    tz = pytz.timezone("US/Mountain")
-    timezone.now()
-    current_time = datetime.now(tz)
-
+    campus = Campus.objects.get(name=os.getenv('CAMPUS'))
+    tz = pytz.timezone(campus.time_zone)
+    current_time = datetime.now(timezone.utc)
+    localized_dt = datetime.now(tz)
+    today = localized_dt.date()
     station = Station.objects.filter(hardware_number=number).first()
 
     if message['type'] == 'nodeinfo':
@@ -97,7 +98,7 @@ def process_message(message):
         if lat == 0 or lon == 0: return
         ground_track = payload.get('ground_track')
         if ground_track: ground_track = ground_track / 100000
-        fence = Campus.objects.get(name=os.getenv('CAMPUS')).inner_geofence
+        fence = campus.inner_geofence
         position_log = PositionLog(
             station=station,
             latitude=lat,
@@ -106,6 +107,7 @@ def process_message(message):
             ground_speed=payload.get('ground_speed'),
             ground_track=ground_track,
             timestamp=timestamp or current_time,
+            updated_on=today,
             updated_at=current_time)
         # log this location if it's away from the hab, or if it represents returning to the hab, or position was blank
         if fence.outside(lat, lon) or station.last_position == None or station.outside(fence):
@@ -140,6 +142,7 @@ def process_message(message):
             battery_level=payload.get('battery_level'),
             voltage=payload.get('voltage'),
             current=payload.get('current'),
+            updated_on=today,
             updated_at=current_time)
         try:
             telemetry_log.save()

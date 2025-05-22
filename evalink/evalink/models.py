@@ -53,6 +53,7 @@ class PositionLog(models.Model):
     ground_track = models.FloatField(null=True)
     timestamp = models.DateTimeField(null=True, db_index=True)
     updated_at = models.DateTimeField(null=False, db_index=True)
+    updated_on = models.DateField(null=True, db_index=True)
 
 class TelemetryLog(models.Model):
     message_id = models.BigIntegerField(db_index=True, null=True, unique=True)
@@ -69,6 +70,7 @@ class TelemetryLog(models.Model):
     voltage = models.FloatField(null=True)
     battery_level = models.FloatField(null=True)
     updated_at = models.DateTimeField(null=False, db_index=True)
+    updated_on = models.DateField(null=True, db_index=True)
 
 class TextLog(models.Model):
     station = models.ForeignKey(Station, on_delete=models.CASCADE, db_index=True)
@@ -113,7 +115,7 @@ class Campus(models.Model):
     mailing_address = models.TextField(null=True, blank=True)
     inner_geofence = models.ForeignKey(Geofence, related_name='inner_campus_set', on_delete=models.SET_NULL, null=True, db_index=True, blank=True)
     outer_geofence = models.ForeignKey(Geofence, related_name='outer_campus_set', on_delete=models.SET_NULL, null=True, db_index=True, blank=True)
-    time_zone = models.TextField(default='America/Denver')
+    time_zone = models.TextField(null=False, default='America/Denver')
     updated_at = models.DateTimeField(null=False, db_index=True)
 
 class Vehicle(models.Model):
