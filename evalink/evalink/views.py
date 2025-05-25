@@ -94,7 +94,7 @@ def path(request):
         result['date'] = found_date
         position_logs = list(PositionLog.objects.filter(station=station, updated_at__date=found_date).filter(
                                                   Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('timestamp', 'updated_at').all())
-        weather_logs = list(TelemetryLog.objects.filter(station=station, updated_at__date=found_date, temperature__isnull=False).order_by('updated_at').all())
+        weather_logs = list(TelemetryLog.objects.filter(station=station, updated_on=found_date, temperature__isnull=False).order_by('updated_at').all())
         wind_weather_logs = [sample for sample in weather_logs if sample.wind_speed != None]
         if wind_weather_logs != []: weather_logs = wind_weather_logs
 

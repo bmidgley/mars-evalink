@@ -13,8 +13,7 @@ def process_message(message):
     campus = Campus.objects.get(name=os.getenv('CAMPUS'))
     tz = pytz.timezone(campus.time_zone)
     current_time = datetime.now(timezone.utc)
-    localized_dt = datetime.now(tz)
-    today = localized_dt.date()
+    today = datetime.now(tz).date()
     station = Station.objects.filter(hardware_number=number).first()
 
     if message['type'] == 'nodeinfo':
