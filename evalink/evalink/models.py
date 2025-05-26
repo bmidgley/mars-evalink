@@ -58,7 +58,7 @@ class PositionLog(models.Model):
 class TelemetryLog(models.Model):
     message_id = models.BigIntegerField(db_index=True, null=True, unique=True)
     station = models.ForeignKey(Station, on_delete=models.CASCADE, db_index=True)
-    position_log = models.ForeignKey(PositionLog, on_delete=models.SET_NULL, null=True, db_index=True)
+    position_log = models.ForeignKey(PositionLog, on_delete=models.RESTRICT, null=True, db_index=True)
     temperature = models.FloatField(null=True)
     relative_humidity = models.FloatField(null=True)
     barometric_pressure = models.FloatField(null=True)
@@ -74,7 +74,7 @@ class TelemetryLog(models.Model):
 
 class TextLog(models.Model):
     station = models.ForeignKey(Station, on_delete=models.CASCADE, db_index=True)
-    position_log = models.ForeignKey(PositionLog, on_delete=models.SET_NULL, null=True, db_index=True)
+    position_log = models.ForeignKey(PositionLog, on_delete=models.RESTRICT, null=True, db_index=True)
     destination = models.ForeignKey(Station, related_name='destination', on_delete=models.SET_NULL, db_index=True, null=True, blank=True)
     text = models.TextField(db_index=True)
     serial_number = models.BigIntegerField(db_index=True, unique=True)
