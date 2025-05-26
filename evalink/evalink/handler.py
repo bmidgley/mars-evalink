@@ -109,7 +109,7 @@ def process_message(message):
             updated_on=today,
             updated_at=current_time)
         # log this location if it's away from the hab, or if it represents returning to the hab, or position was blank
-        if fence.outside(lat, lon) or station.last_position == None or station.outside(fence):
+        if fence.outside(lat, lon) or station.last_position == None or station.outside(fence) or station.last_position.updated_on != today:
             position_log.save()
             station.last_position = position_log
         if "geometry" not in station.features: station.features["geometry"] = {"type": "Point"}
