@@ -94,7 +94,7 @@ def process_message(message):
             timestamp = tz.localize(timestamp)
         lat = payload['latitude_i'] / 10000000
         lon = payload['longitude_i']  / 10000000
-        if lat == 0 or lon == 0: return
+        if round(lat, 3) == 0 and round(lon, 3) == 0: return
         ground_track = payload.get('ground_track')
         if ground_track: ground_track = ground_track / 100000
         fence = campus.inner_geofence
