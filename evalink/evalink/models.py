@@ -33,7 +33,7 @@ class Station(models.Model):
     features = models.JSONField(null=True, blank=True)
     hardware_node = models.CharField(max_length=64, db_index=True, null=False)
     hardware_number = models.BigIntegerField(db_index=True, unique=True)
-    updated_at = models.DateTimeField(null=False, db_index=True)
+    updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
     station_type = models.CharField(max_length=255)
     def outside(self, fence):
         return self.last_position and fence.outside(self.last_position.latitude, self.last_position.longitude)
@@ -41,7 +41,7 @@ class Station(models.Model):
 class StationMeasure(models.Model):
     station = models.ForeignKey(Station, on_delete=models.CASCADE, null=False, db_index=True)
     features = models.JSONField(null=False, blank=False)
-    updated_at = models.DateTimeField(null=False, db_index=True)
+    updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
 
 class PositionLog(models.Model):
     message_id = models.BigIntegerField(db_index=True, null=True)
@@ -52,7 +52,7 @@ class PositionLog(models.Model):
     ground_speed = models.FloatField(null=True)
     ground_track = models.FloatField(null=True)
     timestamp = models.DateTimeField(null=True, db_index=True)
-    updated_at = models.DateTimeField(null=False, db_index=True)
+    updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
     updated_on = models.DateField(null=True, db_index=True)
 
 class TelemetryLog(models.Model):
@@ -69,7 +69,7 @@ class TelemetryLog(models.Model):
     current = models.FloatField(null=True)
     voltage = models.FloatField(null=True)
     battery_level = models.FloatField(null=True)
-    updated_at = models.DateTimeField(null=False, db_index=True)
+    updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
     updated_on = models.DateField(null=True, db_index=True)
 
 class TextLog(models.Model):
@@ -78,7 +78,7 @@ class TextLog(models.Model):
     destination = models.ForeignKey(Station, related_name='destination', on_delete=models.SET_NULL, db_index=True, null=True, blank=True)
     text = models.TextField(db_index=True)
     serial_number = models.BigIntegerField(db_index=True, unique=True)
-    updated_at = models.DateTimeField(null=False, db_index=True)
+    updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
     def serialize(self, show_all=False):
         station_type = self.station.station_type
         if station_type == 'ignore' and show_all: station_type = 'infrastructure'
@@ -97,7 +97,7 @@ class NeighborLog(models.Model):
     neighbor = models.ForeignKey(Station, related_name='neighbor', on_delete=models.CASCADE, db_index=True)
     position_log = models.ForeignKey(PositionLog, on_delete=models.CASCADE, null=True, db_index=True)
     rssi = models.FloatField()
-    updated_at = models.DateTimeField(null=False, db_index=True)
+    updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
 
 class Geofence(models.Model):
     latitude1 = models.FloatField()
@@ -116,7 +116,7 @@ class Campus(models.Model):
     inner_geofence = models.ForeignKey(Geofence, related_name='inner_campus_set', on_delete=models.SET_NULL, null=True, db_index=True, blank=True)
     outer_geofence = models.ForeignKey(Geofence, related_name='outer_campus_set', on_delete=models.SET_NULL, null=True, db_index=True, blank=True)
     time_zone = models.TextField(null=False, default='America/Denver')
-    updated_at = models.DateTimeField(null=False, db_index=True)
+    updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
 
 class Vehicle(models.Model):
     name = models.CharField(max_length=64, db_index=True, null=False)
@@ -128,25 +128,25 @@ class Crew(models.Model):
     name = models.CharField(max_length=64, db_index=True, null=False)
     start_date = models.DateField(null=False)
     end_date = models.DateField(null=False)
-    updated_at = models.DateTimeField(null=False, db_index=True)
+    updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
 
 class Crewmember(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
     crew = models.ForeignKey(Crew, on_delete=models.CASCADE, db_index=True)
     role = models.CharField(max_length=64, db_index=True, null=False)
-    updated_at = models.DateTimeField(null=False, db_index=True)
+    updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
 
 class CrewmemberVitals(models.Model):
     crewmember = models.ForeignKey(Crewmember, on_delete=models.CASCADE, db_index=True)
     vitals = models.JSONField(null=False, blank=False)
-    updated_at = models.DateTimeField(null=False, db_index=True)
+    updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
 
 class Eva(models.Model):
     name = models.CharField(max_length=64, db_index=True, null=False)
     crew = models.ForeignKey(Crew, on_delete=models.CASCADE, db_index=True)
     start_at = models.DateTimeField(null=False, db_index=True)
     end_at = models.DateTimeField(null=False, db_index=True)
-    updated_at = models.DateTimeField(null=False, db_index=True)
+    updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
 
 class EvaCrewmember(models.Model):
     eva = models.ForeignKey(Eva, on_delete=models.CASCADE, db_index=True)
