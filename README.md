@@ -96,3 +96,12 @@ sudo systemctl enable evalink
 cd mars-evalink/evalink
 DJANGO_SETTINGS_MODULE=evalink.settings gunicorn evalink.wsgi
 ```
+
+## Radios
+
+Allow radios to be seen on mqtt.
+
+```
+meshtastic --ch-set module_settings.position_precision 32 --ch-index 0
+```
+
