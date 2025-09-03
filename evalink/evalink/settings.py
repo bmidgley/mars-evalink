@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+import sys
 
 load_dotenv()
 
@@ -90,6 +91,18 @@ DATABASES = {
         'OPTIONS': {'sslmode': os.getenv('SSLMODE')},
     }
 }
+
+# Test database configuration
+if 'test' in sys.argv:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': os.getenv('HOST', 'localhost'),
+        'NAME': os.getenv('NAME', 'test_db'),
+        'PORT': os.getenv('PORT', '5432'),
+        'USER': os.getenv('DBUSER', 'postgres'),
+        'PASSWORD': os.getenv('PASSWORD', 'postgres'),
+        'OPTIONS': {'sslmode': os.getenv('SSLMODE', 'disable')},
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators

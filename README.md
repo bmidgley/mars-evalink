@@ -91,6 +91,49 @@ sudo systemctl start evalink
 sudo systemctl enable evalink
 ```
 
+## Testing
+
+### Running Tests Locally
+
+To run tests locally, you can use the provided script:
+
+```bash
+./run_tests.sh
+```
+
+This script will:
+- Set up the test environment variables
+- Activate the virtual environment
+- Install dependencies
+- Run all Django tests
+
+### Running Tests Manually
+
+If you prefer to run tests manually:
+
+```bash
+cd evalink
+export HOST=localhost
+export NAME=test_db
+export PORT=5432
+export DBUSER=postgres
+export PASSWORD=postgres
+export SSLMODE=disable
+export CAMPUS="Test Campus"
+python manage.py test --verbosity=2
+```
+
+### GitHub Actions
+
+Tests are automatically run on pull requests and pushes to main/master branches. The GitHub Actions workflow:
+
+1. Sets up a PostgreSQL database service
+2. Installs Python dependencies
+3. Runs all Django tests
+4. Specifically runs the `FeaturesEndpointTestCase` tests
+
+You can view the test results in the "Actions" tab of the GitHub repository.
+
 ## Test standalone
 ```
 cd mars-evalink/evalink

@@ -1,0 +1,33 @@
+graph TD
+    subgraph FIELD[MDRS field]
+        A[Astronaut1]
+        B[Astronaut2]
+        C[mesh relay]
+    end
+    subgraph Z[MDRS campus]
+        D[gateway mesh node]
+        Q[analog radio]
+        T[trailer pi]
+        K[MDRS operator]
+        PI[Hab Pi zero]
+    end
+    subgraph AA[Cloud]
+        O[mosquitto-mqtt]
+        R[django web app]
+    end
+    A --> C
+    B --> C
+    C--> A
+    C --> B
+    C ---> D
+    D --> C
+    D --> O
+    O --> D
+    Q ---> T
+    T --> P[discord chat]
+    U[user] <--> P
+    K <--> P
+    O <--> R
+    U <--> R
+    K <--> R
+    PI <--> D
