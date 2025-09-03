@@ -7,6 +7,7 @@ import json
 import os
 from unittest.mock import patch
 from .models import Campus, Station, Hardware, Geofence, StationProfile
+from .test_mqtt_utils import mock_mqtt_client, create_test_mqtt_message
 
 
 class FeaturesEndpointTestCase(TestCase):
@@ -332,3 +333,24 @@ class FeaturesEndpointTestCase(TestCase):
             
             # Verify the exception is Campus.DoesNotExist
             self.assertIn('Campus matching query does not exist', str(context.exception))
+
+    @mock_mqtt_client()
+    def test_mqtt_functionality_with_mock(self):
+        """Test that MQTT functionality works with mocked client"""
+        # This test demonstrates how to test MQTT-dependent code
+        # The @mock_mqtt_client decorator ensures no real MQTT connections are made
+        
+        # Test that we can create MQTT messages
+        test_message = create_test_mqtt_message(
+            message_type='text',
+            payload={'text': 'Hello from test'},
+            from_node=12345
+        )
+        
+        # Verify message structure
+        self.assertIn('type', test_message)
+        self.assertIn('payload', test_message)
+        self.assertIn('from', test_message)
+        self.assertIn('timestamp', test_message)
+        self.assertEqual(test_message['type'], 'text')
+        self.assertEqual(test_message['from'], 12345)

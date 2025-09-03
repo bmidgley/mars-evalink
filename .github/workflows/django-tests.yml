@@ -61,6 +61,13 @@ jobs:
         echo "PASSWORD=postgres" >> $GITHUB_ENV
         echo "SSLMODE=disable" >> $GITHUB_ENV
         echo "CAMPUS=Test Campus" >> $GITHUB_ENV
+        echo "MQTT_SERVER=localhost" >> $GITHUB_ENV
+        echo "MQTT_PORT=1883" >> $GITHUB_ENV
+        echo "MQTT_USER=testuser" >> $GITHUB_ENV
+        echo "MQTT_PASSWORD=testpass" >> $GITHUB_ENV
+        echo "MQTT_NODE_NUMBER=12345" >> $GITHUB_ENV
+        echo "MQTT_TLS=0" >> $GITHUB_ENV
+        echo "MQTT_TOPIC=test/topic" >> $GITHUB_ENV
     
     - name: Wait for PostgreSQL
       run: |
@@ -73,13 +80,26 @@ jobs:
       working-directory: evalink
       run: |
         python manage.py check --database default
+      env:
+        HOST: localhost
+        NAME: test_db
+        PORT: 5432
+        DBUSER: postgres
+        PASSWORD: postgres
+        SSLMODE: disable
+        CAMPUS: "Test Campus"
+        DJANGO_SETTINGS_MODULE: evalink.test_settings
     
     - name: Run Django tests
       working-directory: evalink
       run: |
         python manage.py test --verbosity=2 --parallel
+      env:
+        DJANGO_SETTINGS_MODULE: evalink.test_settings
       
     - name: Run specific test case (FeaturesEndpointTestCase)
       working-directory: evalink
       run: |
         python manage.py test evalink.tests.FeaturesEndpointTestCase --verbosity=2
+      env:
+        DJANGO_SETTINGS_MODULE: evalink.test_settings

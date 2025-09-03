@@ -33,6 +33,7 @@ pip install -r requirements.txt
 # Run the tests
 echo "Running Django tests..."
 cd evalink
+export DJANGO_SETTINGS_MODULE=evalink.test_settings
 python manage.py test --verbosity=2
 
 echo "Tests completed!"

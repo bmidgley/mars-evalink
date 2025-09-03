@@ -1,3 +1,4 @@
 from . import mqtt
 
-mqtt.client.loop_start()
+if mqtt.client is not None:
+    mqtt.client.loop_start()
