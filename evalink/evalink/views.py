@@ -32,7 +32,10 @@ def features(request):
     tz = pytz.timezone(campus.time_zone)
     timezone.now()
     now = datetime.now(tz)
-    past = date.today() - timedelta(days = 30)
+    # Create timezone-aware datetime for past date
+    past_date = date.today() - timedelta(days = 30)
+    past = datetime.combine(past_date, datetime.min.time())
+    past = tz.localize(past)
     if request.user.groups.filter(name='full-history').exists():
         top_stations = Station.objects.order_by('-updated_at').all()
     else:
@@ -257,7 +260,10 @@ def point(request):
 @login_required
 def inventory(request):
     items = []
-    past = date.today() - timedelta(days = 30)
+    # Create timezone-aware datetime for past date
+    past_date = date.today() - timedelta(days = 30)
+    past = datetime.combine(past_date, datetime.min.time())
+    past = timezone.make_aware(past, timezone.get_current_timezone())
     stations = Station.objects.filter(updated_at__gt = past).filter(~Q(station_type="ignore")).order_by('name').all()
     for station in stations:
         if station.features == None: continue

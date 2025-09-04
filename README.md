@@ -107,6 +107,29 @@ This script will:
 - Install dependencies
 - Run all Django tests
 
+### Django Development Menu
+
+For easy access to common Django commands, you can use the interactive menu:
+
+```bash
+# Python version (more features)
+./menu.py
+
+# Shell version (simpler)
+./django_menu.sh
+```
+
+The menu provides quick access to:
+- 🖥️  Run Development Server (runserver)
+- 🧪 Run Tests
+- 🗄️  Run Database Migrations
+- 📊 Create Database Schema Diagram
+- 🧹 Collect Static Files
+- 👤 Create Superuser
+- 🔍 Django Shell
+- 📋 Show Django Commands
+- ⚙️  Check Django Configuration
+
 ### Running Tests Manually
 
 If you prefer to run tests manually:
