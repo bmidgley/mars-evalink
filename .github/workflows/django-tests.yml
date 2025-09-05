@@ -1,0 +1,105 @@
+name: Django Tests
+
+on:
+  pull_request:
+    branches: [ main, master ]
+  push:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y graphviz libgraphviz-dev pkg-config postgresql-client
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        echo "Dependencies installed successfully"
+    
+    - name: Set up environment variables
+      run: |
+        echo "HOST=localhost" >> $GITHUB_ENV
+        echo "NAME=test_db" >> $GITHUB_ENV
+        echo "PORT=5432" >> $GITHUB_ENV
+        echo "DBUSER=postgres" >> $GITHUB_ENV
+        echo "PASSWORD=postgres" >> $GITHUB_ENV
+        echo "SSLMODE=disable" >> $GITHUB_ENV
+        echo "CAMPUS=Test Campus" >> $GITHUB_ENV
+        echo "MQTT_SERVER=localhost" >> $GITHUB_ENV
+        echo "MQTT_PORT=1883" >> $GITHUB_ENV
+        echo "MQTT_USER=testuser" >> $GITHUB_ENV
+        echo "MQTT_PASSWORD=testpass" >> $GITHUB_ENV
+        echo "MQTT_NODE_NUMBER=12345" >> $GITHUB_ENV
+        echo "MQTT_TLS=0" >> $GITHUB_ENV
+        echo "MQTT_TOPIC=test/topic" >> $GITHUB_ENV
+    
+    - name: Wait for PostgreSQL
+      run: |
+        until pg_isready -h localhost -p 5432 -U postgres; do
+          echo "Waiting for PostgreSQL..."
+          sleep 2
+        done
+    
+    - name: Test database connection
+      working-directory: evalink
+      run: |
+        python manage.py check --database default
+      env:
+        HOST: localhost
+        NAME: test_db
+        PORT: 5432
+        DBUSER: postgres
+        PASSWORD: postgres
+        SSLMODE: disable
+        CAMPUS: "Test Campus"
+        DJANGO_SETTINGS_MODULE: evalink.test_settings
+    
+    - name: Run Django tests
+      working-directory: evalink
+      run: |
+        python manage.py test --verbosity=2 --parallel
+      env:
+        DJANGO_SETTINGS_MODULE: evalink.test_settings
+      
+    - name: Run specific test case (FeaturesEndpointTestCase)
+      working-directory: evalink
+      run: |
+        python manage.py test evalink.tests.FeaturesEndpointTestCase --verbosity=2
+      env:
+        DJANGO_SETTINGS_MODULE: evalink.test_settings

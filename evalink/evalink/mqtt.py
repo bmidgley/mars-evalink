@@ -6,6 +6,7 @@ import os
 import json
 from . import handler
 import traceback
+from django.conf import settings
 
 def on_connect(client, _userdata, _flags, _rc):
     client.subscribe(f'{os.getenv("MQTT_TOPIC")}/+/json/#')
@@ -31,10 +32,15 @@ def verify(message, field):
 
 load_dotenv()
 
-client = mqtt.Client()
-client.on_connect = on_connect
-client.on_message = on_message
-client.on_disconnect = on_disconnect
-if os.getenv('MQTT_TLS'): client.tls_set()
-client.username_pw_set(username=os.getenv('MQTT_USER'), password=os.getenv('MQTT_PASSWORD'))
-client.connect(os.getenv('MQTT_SERVER'), int(os.getenv('MQTT_PORT')), 60)
+# Only create MQTT client if not in test mode
+if not hasattr(settings, 'MQTT_ENABLED') or settings.MQTT_ENABLED:
+    client = mqtt.Client()
+    client.on_connect = on_connect
+    client.on_message = on_message
+    client.on_disconnect = on_disconnect
+    if os.getenv('MQTT_TLS'): client.tls_set()
+    client.username_pw_set(username=os.getenv('MQTT_USER'), password=os.getenv('MQTT_PASSWORD'))
+    client.connect(os.getenv('MQTT_SERVER'), int(os.getenv('MQTT_PORT')), 60)
+else:
+    # Create a mock client for tests
+    client = None
