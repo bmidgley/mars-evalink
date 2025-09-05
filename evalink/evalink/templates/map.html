@@ -145,7 +145,7 @@
 
         #geo-tab {
             position: absolute;
-            width: 275px;
+            width: 193px;
             height: 35px;
             top: 8px;
             left: 30px;
@@ -161,13 +161,25 @@
         #layerButton {
             position: absolute;
             top: 15px;
-            left: 310px;
+            left: 231px;
         }
 
         #historyButton {
             position: absolute;
             top: 15px;
             left: 370px;
+        }
+
+        #date-input {
+            position: absolute;
+            top: 11px;
+            left: 288px;
+            width: 80px;
+            height: 30px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 12px;
         }
 
         #message-tab form {
@@ -333,6 +345,8 @@
         Remap
     </button>
 
+    <input type="text" id="date-input" placeholder="2025-12-25">
+
     <div id="historyButton">
         <button type="button" onclick="populateHistory()">
             Search area...
@@ -439,7 +453,11 @@
 
             const glbox = map.getView().calculateExtent(map.getSize());
             const box = ol.proj.transformExtent(glbox,'EPSG:3857','EPSG:4326');
-            const url = `/search?latitude1=${box[1]}&longitude1=${box[0]}&latitude2=${box[3]}&longitude2=${box[2]}`;
+            const dateValue = document.getElementById('date-input').value;
+            let url = `/search?latitude1=${box[1]}&longitude1=${box[0]}&latitude2=${box[3]}&longitude2=${box[2]}`;
+            if (dateValue && dateValue.trim() !== '') {
+                url += `&date=${encodeURIComponent(dateValue)}`;
+            }
             const response = await fetch(url);
             const paths = await response.json();
 

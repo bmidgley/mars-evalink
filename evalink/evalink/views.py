@@ -280,15 +280,27 @@ def inventory(request):
 def search(request):
     campus = Campus.objects.get(name=os.getenv('CAMPUS'))
     tz = pytz.timezone(campus.time_zone)
-    latitude1 = float(request.GET.get('latitude1'))
-    latitude2 = float(request.GET.get('latitude2'))
-    longitude1 = float(request.GET.get('longitude1'))
-    longitude2 = float(request.GET.get('longitude2'))
-    latitude1, latitude2 = sorted([latitude1, latitude2])
-    longitude1, longitude2 = sorted([longitude1, longitude2])
+    latitude1 = request.GET.get('latitude1')
+    latitude2 = request.GET.get('latitude2')
+    longitude1 = request.GET.get('longitude1')
+    longitude2 = request.GET.get('longitude2')
+    date = request.GET.get('date')
     infra_station_ids = Station.objects.filter(station_type='infrastructure').values_list('pk', flat=True)
-    position_logs = PositionLog.objects.exclude(station_id__in=infra_station_ids).filter(
-            Q(latitude__gt=latitude1) & Q(latitude__lt=latitude2) & Q(longitude__gt=longitude1) & Q(longitude__lt=longitude2)).order_by('-updated_at')[:100000]
+    position_logs = PositionLog.objects.exclude(station_id__in=infra_station_ids)
+    if latitude1 and latitude2 and longitude1 and longitude2:
+        latitude1 = float(latitude1)
+        latitude2 = float(latitude2)
+        longitude1 = float(longitude1)
+        longitude2 = float(longitude2)
+        latitude1, latitude2 = sorted([latitude1, latitude2])
+        longitude1, longitude2 = sorted([longitude1, longitude2])
+        position_logs = position_logs.filter(
+            Q(latitude__gt=latitude1) & Q(latitude__lt=latitude2) & Q(longitude__gt=longitude1) & Q(longitude__lt=longitude2))
+    if date and date != '':
+        parsed_date = parse_date(date)
+        if parsed_date is not None:
+            position_logs = position_logs.filter(updated_on=parsed_date)
+    position_logs = position_logs.order_by('-updated_at')[:100000]
     results = []
     paths = []
     for position_log in position_logs:
