@@ -285,6 +285,7 @@ def search(request):
     longitude1 = request.GET.get('longitude1')
     longitude2 = request.GET.get('longitude2')
     date = request.GET.get('date')
+    endDate = request.GET.get('endDate')
     infra_station_ids = Station.objects.filter(station_type='infrastructure').values_list('pk', flat=True)
     position_logs = PositionLog.objects.exclude(station_id__in=infra_station_ids)
     if latitude1 and latitude2 and longitude1 and longitude2:
@@ -296,7 +297,12 @@ def search(request):
         longitude1, longitude2 = sorted([longitude1, longitude2])
         position_logs = position_logs.filter(
             Q(latitude__gt=latitude1) & Q(latitude__lt=latitude2) & Q(longitude__gt=longitude1) & Q(longitude__lt=longitude2))
-    if date and date != '':
+    if date and date != '' and endDate and endDate != '':
+        parsed_date = parse_date(date)
+        parsed_end_date = parse_date(endDate)
+        if parsed_date is not None and parsed_end_date is not None:
+            position_logs = position_logs.filter(updated_on__gte=parsed_date, updated_on__lte=parsed_end_date)
+    elif date and date != '':
         parsed_date = parse_date(date)
         if parsed_date is not None:
             position_logs = position_logs.filter(updated_on=parsed_date)

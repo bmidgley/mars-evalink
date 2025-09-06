@@ -167,14 +167,26 @@
         #historyButton {
             position: absolute;
             top: 15px;
-            left: 370px;
+            left: 375px;
         }
 
         #date-input {
             position: absolute;
             top: 11px;
             left: 288px;
-            width: 80px;
+            width: 85px;
+            height: 30px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        #endDate {
+            position: absolute;
+            top: 45px;
+            left: 288px;
+            width: 85px;
             height: 30px;
             padding: 5px;
             border: 1px solid #ccc;
@@ -346,6 +358,7 @@
     </button>
 
     <input type="text" id="date-input" placeholder="2025-12-25">
+    <input type="text" id="endDate" placeholder="2025-12-31">
 
     <div id="historyButton">
         <button type="button" onclick="populateHistory()">
@@ -454,9 +467,13 @@
             const glbox = map.getView().calculateExtent(map.getSize());
             const box = ol.proj.transformExtent(glbox,'EPSG:3857','EPSG:4326');
             const dateValue = document.getElementById('date-input').value;
-            let url = `/search?latitude1=${box[1]}&longitude1=${box[0]}&latitude2=${box[3]}&longitude2=${box[2]}`;
+            const endDateValue = document.getElementById('endDate').value;
+            let url = `/search/?latitude1=${box[1]}&longitude1=${box[0]}&latitude2=${box[3]}&longitude2=${box[2]}`;
             if (dateValue && dateValue.trim() !== '') {
                 url += `&date=${encodeURIComponent(dateValue)}`;
+            }
+            if (endDateValue && endDateValue.trim() !== '') {
+                url += `&endDate=${encodeURIComponent(endDateValue)}`;
             }
             const response = await fetch(url);
             const paths = await response.json();
