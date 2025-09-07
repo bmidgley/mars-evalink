@@ -279,6 +279,7 @@ def inventory(request):
 @login_required
 def search(request):
     campus = Campus.objects.get(name=os.getenv('CAMPUS'))
+    fence = campus.inner_geofence
     tz = pytz.timezone(campus.time_zone)
     latitude1 = request.GET.get('latitude1')
     latitude2 = request.GET.get('latitude2')
@@ -299,6 +300,9 @@ def search(request):
         longitude1, longitude2 = sorted([longitude1, longitude2])
         position_logs = position_logs.filter(
             Q(latitude__gt=latitude1) & Q(latitude__lt=latitude2) & Q(longitude__gt=longitude1) & Q(longitude__lt=longitude2))
+    if fence:
+        position_logs = position_logs.filter(
+            Q(latitude__lt=fence.latitude1) | Q(latitude__gt=fence.latitude2) | Q(longitude__lt=fence.longitude1) | Q(longitude__gt=fence.longitude2))
     if date and date != '' and endDate and endDate != '':
         parsed_date = parse_date(date)
         parsed_end_date = parse_date(endDate)
