@@ -174,7 +174,7 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
             z-index: 1000;
             font-family: 'Roboto', sans-serif;
-            min-width: 200px;
+            width: 250px;
         }
 
         #search-panel h4 {
@@ -225,6 +225,36 @@
             border-radius: 4px;
             font-size: 12px;
             box-sizing: border-box;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #historyDropdown option {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .search-spinner {
+            display: none;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #007bff;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         #message-tab form {
@@ -399,6 +429,9 @@
                 Search area...
             </button>
         </div>
+        <div class="search-spinner" id="searchSpinner">
+            <div class="spinner"></div>
+        </div>
         <select id="historyDropdown" onChange="populateUrlPath(this.options[this.selectedIndex].value);">
         </select>
     </div>
@@ -497,21 +530,26 @@
 
         async function populateHistory() {
             var dropdown = document.getElementById("historyDropdown");
+            var spinner = document.getElementById("searchSpinner");
+            
+            // Show spinner and clear dropdown
+            spinner.style.display = "block";
             dropdown.innerHTML = ""; // Clear existing options
 
-            const glbox = map.getView().calculateExtent(map.getSize());
-            const box = ol.proj.transformExtent(glbox,'EPSG:3857','EPSG:4326');
-            const dateValue = document.getElementById('date-input').value;
-            const endDateValue = document.getElementById('endDate').value;
-            let url = `/search/?latitude1=${box[1]}&longitude1=${box[0]}&latitude2=${box[3]}&longitude2=${box[2]}`;
-            if (dateValue && dateValue.trim() !== '') {
-                url += `&date=${encodeURIComponent(dateValue)}`;
-            }
-            if (endDateValue && endDateValue.trim() !== '') {
-                url += `&endDate=${encodeURIComponent(endDateValue)}`;
-            }
-            const response = await fetch(url);
-            const paths = await response.json();
+            try {
+                const glbox = map.getView().calculateExtent(map.getSize());
+                const box = ol.proj.transformExtent(glbox,'EPSG:3857','EPSG:4326');
+                const dateValue = document.getElementById('date-input').value;
+                const endDateValue = document.getElementById('endDate').value;
+                let url = `/search/?latitude1=${box[1]}&longitude1=${box[0]}&latitude2=${box[3]}&longitude2=${box[2]}`;
+                if (dateValue && dateValue.trim() !== '') {
+                    url += `&date=${encodeURIComponent(dateValue)}`;
+                }
+                if (endDateValue && endDateValue.trim() !== '') {
+                    url += `&endDate=${encodeURIComponent(endDateValue)}`;
+                }
+                const response = await fetch(url);
+                const paths = await response.json();
 
             const blankOption = document.createElement("option");
             blankOption.value = "";
@@ -541,6 +579,13 @@
                         dropdown.selectedIndex = 0;
                     }
                 });
+            }
+            } catch (error) {
+                console.error('Search error:', error);
+                dropdown.innerHTML = '<option value="">Search failed</option>';
+            } finally {
+                // Hide spinner
+                spinner.style.display = "none";
             }
         }
 
