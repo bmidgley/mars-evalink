@@ -357,11 +357,11 @@
         <i class="bi bi-layers"></i>
     </button>
 
-    <input type="text" id="date-input" placeholder="2025-12-25">
-    <input type="text" id="endDate" placeholder="2025-12-31">
+    <input type="text" id="date-input" placeholder="2025-12-25" title="Constrains search results to this day or starting on this day if the end date is also present. YYYY-MM-DD format.">
+    <input type="text" id="endDate" placeholder="2025-12-31" title="Constrains search results to end by this date. Start date above must be present. YYYY-MM-DD format.">
 
     <div id="historyButton">
-        <button type="button" onclick="populateHistory()">
+        <button type="button" onclick="populateHistory()" title="Searches the currently visible part of the map for logged tracks">
             Search area...
         </button>
         <select id="historyDropdown" onChange="populateUrlPath(this.options[this.selectedIndex].value);">
