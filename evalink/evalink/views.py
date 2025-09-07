@@ -286,6 +286,8 @@ def search(request):
     longitude2 = request.GET.get('longitude2')
     date = request.GET.get('date')
     endDate = request.GET.get('endDate')
+    download = request.GET.get('download')
+    
     infra_station_ids = Station.objects.filter(station_type='infrastructure').values_list('pk', flat=True)
     position_logs = PositionLog.objects.exclude(station_id__in=infra_station_ids)
     if latitude1 and latitude2 and longitude1 and longitude2:
@@ -307,6 +309,77 @@ def search(request):
         if parsed_date is not None:
             position_logs = position_logs.filter(updated_on=parsed_date)
     position_logs = position_logs.order_by('-updated_at')[:100000]
+    
+    # If download is requested, generate GPX file
+    if download == 'true':
+        from .export_gpx import ExportGpx
+        import xmltodict
+        from io import StringIO
+        
+        # Group position logs by station
+        points_hash = {}
+        waypoints_list = []
+        
+        for position_log in position_logs:
+            station = Station.objects.get(pk=position_log.station_id)
+            if station and station.station_type != 'ignore':
+                station_name = station.name
+                if station_name not in points_hash:
+                    points_hash[station_name] = []
+                
+                # Format timestamp for GPX
+                timestamp = position_log.timestamp or position_log.updated_at
+                iso_timestamp = timestamp.astimezone(tz).strftime("%Y-%m-%dT%H:%M:%SZ")
+                
+                entry = {
+                    '@lat': str(position_log.latitude),
+                    '@lon': str(position_log.longitude),
+                    'ele': str(position_log.altitude) if position_log.altitude else '0',
+                    'time': iso_timestamp,
+                }
+                points_hash[station_name].append(entry)
+        
+        # Generate GPX content
+        station_names = list(points_hash.keys())
+        tracks = []
+        for station_name in station_names:
+            tracks.append({
+                'name': station_name,
+                'trkseg': {
+                    'trkpt': points_hash[station_name]
+                }
+            })
+
+        gpx = {
+            'gpx': {
+                '@xmlns': "http://www.topografix.com/GPX/1/1", 
+                '@xmlns:gpxx': "http://www.garmin.com/xmlschemas/GpxExtensions/v3", 
+                '@xmlns:gpxtpx': "http://www.garmin.com/xmlschemas/TrackPointExtension/v1", 
+                '@creator': "Mars Evalink", 
+                '@version': "1.1", 
+                '@xmlns:xsi': "http://www.w3.org/2001/XMLSchema-instance", 
+                '@xsi:schemaLocation': "http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd http://www.garmin.com/xmlschemas/GpxExtensions/v3 http://www.garmin.com/xmlschemas/GpxExtensionsv3.xsd http://www.garmin.com/xmlschemas/TrackPointExtension/v1 http://www.garmin.com/xmlschemas/TrackPointExtensionv1.xsd",
+                'trk': tracks
+            }
+        }
+
+        # Generate filename with date range
+        filename = "mars_evalink_export"
+        if date and endDate:
+            filename += f"_{date}_to_{endDate}"
+        elif date:
+            filename += f"_{date}"
+        filename += ".gpx"
+        
+        # Create GPX content
+        gpx_content = xmltodict.unparse(gpx, pretty=True)
+        
+        # Return as downloadable file
+        response = HttpResponse(gpx_content, content_type='application/gpx+xml')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    
+    # Regular search functionality
     results = []
     paths = []
     for position_log in position_logs:

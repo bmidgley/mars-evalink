@@ -490,6 +490,23 @@
                 option1.value = path.url;
                 dropdown.add(option1);
             })
+
+            if(paths.items.length > 0) {
+                url += `&download=true`;
+                // Add "Download combined GPX" option to the dropdown
+                const downloadOption = document.createElement("option");
+                downloadOption.value = url;
+                downloadOption.text = "Download combined GPX";
+                dropdown.add(downloadOption);
+                // Optionally, handle selection to trigger download
+                dropdown.addEventListener('change', function(e) {
+                    if (dropdown.value === url) {
+                        window.location.href = url;
+                        // Optionally reset dropdown to blank after download
+                        dropdown.selectedIndex = 0;
+                    }
+                });
+            }
         }
 
         function displayWaypoints() {
