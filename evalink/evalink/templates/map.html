@@ -164,34 +164,67 @@
             left: 231px;
         }
 
-        #historyButton {
+        #search-panel {
             position: absolute;
-            top: 15px;
-            left: 375px;
+            top: 60px;
+            left: 10px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            font-family: 'Roboto', sans-serif;
+            min-width: 200px;
         }
 
-        #date-input {
-            position: absolute;
-            top: 11px;
-            left: 288px;
-            width: 85px;
+        #search-panel h4 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #333;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .search-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        #date-input, #endDate {
+            width: 100%;
             height: 30px;
             padding: 5px;
             border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 12px;
+            box-sizing: border-box;
         }
 
-        #endDate {
-            position: absolute;
-            top: 45px;
-            left: 288px;
-            width: 85px;
+        .search-controls button {
+            width: 100%;
+            height: 32px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .search-controls button:hover {
+            background-color: #0056b3;
+        }
+
+        #historyDropdown {
+            width: 100%;
             height: 30px;
             padding: 5px;
             border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 12px;
+            box-sizing: border-box;
         }
 
         #message-tab form {
@@ -357,13 +390,15 @@
         <i class="bi bi-layers"></i>
     </button>
 
-    <input type="text" id="date-input" placeholder="2025-12-25" title="Constrains search results to this day or starting on this day if the end date is also present. YYYY-MM-DD format.">
-    <input type="text" id="endDate" placeholder="2025-12-31" title="Constrains search results to end by this date. Start date above must be present. YYYY-MM-DD format.">
-
-    <div id="historyButton">
-        <button type="button" onclick="populateHistory()" title="Searches the currently visible part of the map for logged tracks">
-            Search area...
-        </button>
+    <div id="search-panel">
+        <h4>Search Tracks</h4>
+        <div class="search-controls">
+            <input type="text" id="date-input" placeholder="2025-12-25" title="Constrains search results to this day or starting on this day if the end date is also present. YYYY-MM-DD format.">
+            <input type="text" id="endDate" placeholder="2025-12-31" title="Constrains search results to end by this date. Start date above must be present. YYYY-MM-DD format.">
+            <button type="button" onclick="populateHistory()" title="Searches the currently visible part of the map for logged tracks">
+                Search area...
+            </button>
+        </div>
         <select id="historyDropdown" onChange="populateUrlPath(this.options[this.selectedIndex].value);">
         </select>
     </div>
