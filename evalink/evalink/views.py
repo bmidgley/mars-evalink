@@ -312,7 +312,6 @@ def search(request):
         parsed_date = parse_date(date)
         if parsed_date is not None:
             position_logs = position_logs.filter(updated_on=parsed_date)
-    position_logs = position_logs.order_by('-updated_at')[:100000]
     
     # If download is requested, generate GPX file
     if download == 'true':
@@ -321,11 +320,16 @@ def search(request):
         from io import StringIO
         
         # Group position logs by station
+        station_hash = {}
         points_hash = {}
         waypoints_list = []
         
-        for position_log in position_logs:
-            station = Station.objects.get(pk=position_log.station_id)
+        for position_log in position_logs.order_by('updated_at')[:1000000]:
+            station = station_hash.get(position_log.station_id)
+            if station == None:
+                station = Station.objects.get(pk=position_log.station_id)
+                if station:
+                    station_hash[position_log.station_id] = station
             if station and station.station_type != 'ignore':
                 station_name = station.name
                 if station_name not in points_hash:
@@ -386,7 +390,7 @@ def search(request):
     # Regular search functionality
     results = []
     paths = []
-    for position_log in position_logs:
+    for position_log in position_logs.order_by('-updated_at')[:100000]:
         timestamp = position_log.timestamp or position_log.updated_at
         date = timestamp.astimezone(tz).strftime("%Y-%m-%d")
         after_date = (timestamp - timedelta(days = 1)).astimezone(tz).strftime("%Y-%m-%d")
