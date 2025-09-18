@@ -277,6 +277,23 @@ def inventory(request):
     return JsonResponse({'items': items}, json_dumps_params={'indent': 2})
 
 @login_required
+def campuses(request):
+    """API endpoint to list all campuses with id, name, latitude, longitude, and elevation"""
+    campuses = Campus.objects.all().order_by('name')
+    campus_data = []
+    
+    for campus in campuses:
+        campus_data.append({
+            'id': campus.id,
+            'name': campus.name,
+            'latitude': campus.latitude,
+            'longitude': campus.longitude,
+            'elevation': campus.altitude
+        })
+    
+    return JsonResponse({'campuses': campus_data}, json_dumps_params={'indent': 2})
+
+@login_required
 def search(request):
     campus = Campus.objects.get(name=os.getenv('CAMPUS'))
     fence = campus.inner_geofence

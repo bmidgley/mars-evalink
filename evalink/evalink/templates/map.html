@@ -177,6 +177,36 @@
             width: 250px;
         }
 
+        #campus-panel {
+            position: absolute;
+            top: 275px;
+            left: 10px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            font-family: 'Roboto', sans-serif;
+            width: 200px;
+        }
+
+        #campus-panel h4 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #333;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        #campusDropdown {
+            width: 100%;
+            height: 35px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: 'Roboto', sans-serif;
+        }
+
         #search-panel h4 {
             margin: 0 0 10px 0;
             font-size: 16px;
@@ -436,6 +466,12 @@
         </select>
     </div>
 
+    <div id="campus-panel">
+        <select id="campusDropdown" onChange="centerMapOnCampus(this.options[this.selectedIndex].value);">
+            <option value="">Loading campuses...</option>
+        </select>
+    </div>
+
     <div id="emergency-device-panel" class="hidden">
         <h3>Emergency Device List</h3>
         <ul id="emergency-device-list"></ul>
@@ -526,6 +562,61 @@
             nextLayer = { "topo": "outdoor", "outdoor": "hybrid", "hybrid": "topo" };
             localStorage.setItem("layerName", nextLayer[layerName]);
             location.reload();
+        }
+
+        // Campus dropdown functionality
+        let campusData = {};
+
+        async function loadCampuses() {
+            try {
+                const response = await fetch('/campuses.json');
+                const data = await response.json();
+                const dropdown = document.getElementById('campusDropdown');
+                
+                // Clear existing options
+                dropdown.innerHTML = '';
+                
+                // Add default option
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.text = 'Select a campus...';
+                dropdown.appendChild(defaultOption);
+                
+                // Add campus options
+                data.campuses.forEach(campus => {
+                    const option = document.createElement('option');
+                    option.value = campus.id;
+                    option.text = campus.name;
+                    dropdown.appendChild(option);
+                    
+                    // Store campus data for later use
+                    campusData[campus.id] = {
+                        name: campus.name,
+                        latitude: campus.latitude,
+                        longitude: campus.longitude,
+                        elevation: campus.elevation
+                    };
+                });
+            } catch (error) {
+                console.error('Error loading campuses:', error);
+                const dropdown = document.getElementById('campusDropdown');
+                dropdown.innerHTML = '<option value="">Error loading campuses</option>';
+            }
+        }
+
+        function centerMapOnCampus(campusId) {
+            if (!campusId || !campusData[campusId]) {
+                return;
+            }
+            
+            const campus = campusData[campusId];
+            const coordinates = ol.proj.fromLonLat([campus.longitude, campus.latitude]);
+            
+            // Center the map on the campus coordinates
+            map.getView().setCenter(coordinates);
+            
+            // Set zoom level five levels closer than original (was 12, now 17)
+            map.getView().setZoom(17);
         }
 
         async function populateHistory() {
@@ -1130,6 +1221,7 @@
         setInterval(updateGeoJSON, 9000);
 
         updateGeoJSON();
+        loadCampuses();
 
         function closeOverlay() {
             overlay.setPosition(undefined);
