@@ -82,6 +82,12 @@ class TextLog(models.Model):
     def serialize(self, show_all=False):
         station_type = self.station.station_type
         if station_type == 'ignore' and show_all: station_type = 'infrastructure'
+        
+        # Use position_log timestamp if available (for planned locations), otherwise use updated_at
+        timestamp = self.updated_at
+        if self.position_log and self.position_log.timestamp:
+            timestamp = self.position_log.timestamp
+            
         return {
             "id": self.id,
             "stataion_id": self.station_id,
@@ -89,7 +95,7 @@ class TextLog(models.Model):
             "station_type": station_type,
             "text": self.text,
             "position": [getattr(self.position_log, 'latitude', None),getattr(self.position_log, 'longitude', None)],
-            "updated_at": self.updated_at
+            "updated_at": timestamp
         }
 
 class NeighborLog(models.Model):

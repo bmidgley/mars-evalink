@@ -114,7 +114,11 @@ def path(request):
         text_logs = TextLog.objects.filter(station=station, updated_at__date=found_date).order_by('updated_at').all()
         for text in text_logs:
             if text.position_log:
-                result['waypoints'].append({'latitude': text.position_log.latitude, 'longitude': text.position_log.longitude, 'altitude': text.position_log.altitude, 'updated_at': text.updated_at, 'text': text.text})
+                # Use position_log timestamp if available (for planned locations), otherwise use text.updated_at
+                timestamp = text.updated_at
+                if text.position_log.timestamp:
+                    timestamp = text.position_log.timestamp
+                result['waypoints'].append({'latitude': text.position_log.latitude, 'longitude': text.position_log.longitude, 'altitude': text.position_log.altitude, 'updated_at': timestamp, 'text': text.text})
     else:
         result['date'] = before_date.isoformat()[0:10]
     return JsonResponse(result, json_dumps_params={'indent': 2})

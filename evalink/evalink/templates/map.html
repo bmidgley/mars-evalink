@@ -1317,6 +1317,13 @@
 
         document.addEventListener('keydown', function(event) {
             if(event.key == "z") map.getView().setRotation(Math.PI);
+            if(event.key == "Escape") {
+                // Close location popup if it's open
+                const popup = document.getElementById('add-location-popup');
+                if (popup.style.display === 'flex') {
+                    closeLocationPopup();
+                }
+            }
         });
 
         document.addEventListener('keyup', function(event) {
