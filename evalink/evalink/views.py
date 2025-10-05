@@ -428,7 +428,7 @@ def add_location_to_plan(request):
         text_log = TextLog(
             station=planner_station,
             position_log=position_log,
-            text="x",
+            text="Objective",
             serial_number=int(timezone.now().timestamp() * 1000000),  # Generate unique serial number
             updated_at=text_datetime
         )
