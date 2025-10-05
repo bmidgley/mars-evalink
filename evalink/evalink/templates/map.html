@@ -1053,6 +1053,18 @@
                 geometry : route,
             });
             vectorTrackSource.addFeature(feature);
+            
+            // Position the map over the first coordinate in the list
+            if(data.points && data.points.length > 0) {
+                const firstPoint = data.points[0];
+                const coordinates = ol.proj.fromLonLat([firstPoint.longitude, firstPoint.latitude]);
+                map.getView().animate({
+                    center: coordinates,
+                    zoom: 16,
+                    duration: 1000,
+                });
+            }
+            
             showTimeSlider(name, `${window.location.pathname}?${params}`, `${window.location.pathname}?${base_params}`);
             window.current_name = name;
             window.current_date = data.date;

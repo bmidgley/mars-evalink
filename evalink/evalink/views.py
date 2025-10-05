@@ -81,37 +81,121 @@ def path(request):
     if station == None: return HttpResponseNotFound("not found")
     campus = Campus.objects.get(name=os.getenv('CAMPUS'))
     g = campus.inner_geofence
-    current = date.today() + timedelta(days = 1)
-    before_date = localdate("before", request.GET.get('before_date'), current)
+    
+    # For planner stations, default to showing future planned locations
+    if station.station_type == 'planner':
+        current = date.today() - timedelta(days = 1)  # Look for future dates
+        # For planner stations, don't use before_date when showing future planned locations
+        # Only use it if explicitly provided in the URL
+        if request.GET.get('before_date'):
+            before_date = localdate("before", request.GET.get('before_date'), current)
+        else:
+            before_date = None  # Don't limit by before_date for future planned locations
+    else:
+        current = date.today() + timedelta(days = 1)  # Look for past dates
+        before_date = localdate("before", request.GET.get('before_date'), current)
+    
     after_date = localdate("after", request.GET.get('after_date'), None)
     models = {0: 'UNSET', 1: 'TLORA_V2', 2: 'TLORA_V1', 3: 'TLORA_V2_1_1P6', 4: 'TBEAM', 5: 'HELTEC_V2_0', 6: 'TBEAM_V0P7', 7: 'T_ECHO', 8: 'TLORA_V1_1P3', 9: 'RAK4631', 10: 'HELTEC_V2_1', 11: 'HELTEC_V1', 12: 'LILYGO_TBEAM_S3_CORE', 13: 'RAK11200', 14: 'NANO_G1', 15: 'TLORA_V2_1_1P8', 16: 'TLORA_T3_S3', 17: 'NANO_G1_EXPLORER', 18: 'NANO_G2_ULTRA', 19: 'LORA_TYPE', 20: 'WIPHONE', 21: 'WIO_WM1110', 22: 'RAK2560', 23: 'HELTEC_HRU_3601', 24: 'HELTEC_WIRELESS_BRIDGE', 25: 'STATION_G1', 26: 'RAK11310', 27: 'SENSELORA_RP2040', 28: 'SENSELORA_S3', 29: 'CANARYONE', 30: 'RP2040_LORA', 31: 'STATION_G2', 32: 'LORA_RELAY_V1', 33: 'NRF52840DK', 34: 'PPR', 35: 'GENIEBLOCKS', 36: 'NRF52_UNKNOWN', 37: 'PORTDUINO', 38: 'ANDROID_SIM', 39: 'DIY_V1', 40: 'NRF52840_PCA10059', 41: 'DR_DEV', 42: 'M5STACK', 43: 'HELTEC_V3', 44: 'HELTEC_WSL_V3', 45: 'BETAFPV_2400_TX', 46: 'BETAFPV_900_NANO_TX', 47: 'RPI_PICO', 48: 'HELTEC_WIRELESS_TRACKER', 49: 'HELTEC_WIRELESS_PAPER', 50: 'T_DECK', 51: 'T_WATCH_S3', 52: 'PICOMPUTER_S3', 53: 'HELTEC_HT62', 54: 'EBYTE_ESP32_S3', 55: 'ESP32_S3_PICO', 56: 'CHATTER_2', 57: 'HELTEC_WIRELESS_PAPER_V1_0', 58: 'HELTEC_WIRELESS_TRACKER_V1_0', 59: 'UNPHONE', 60: 'TD_LORAC', 61: 'CDEBYTE_EORA_S3', 62: 'TWC_MESH_V4', 63: 'NRF52_PROMICRO_DIY', 64: 'RADIOMASTER_900_BANDIT_NANO', 65: 'HELTEC_CAPSULE_SENSOR_V3', 66: 'HELTEC_VISION_MASTER_T190', 67: 'HELTEC_VISION_MASTER_E213', 68: 'HELTEC_VISION_MASTER_E290', 69: 'HELTEC_MESH_NODE_T114', 70: 'SENSECAP_INDICATOR', 71: 'TRACKER_T1000_E', 72: 'RAK3172', 73: 'WIO_E5', 74: 'RADIOMASTER_900_BANDIT', 75: 'ME25LS01_4Y10TD', 76: 'RP2040_FEATHER_RFM95', 77: 'M5STACK_COREBASIC', 78: 'M5STACK_CORE2', 79: 'RPI_PICO2', 80: 'M5STACK_CORES3', 81: 'SEEED_XIAO_S3', 82: 'MS24SF1', 83: 'TLORA_C6'}
     hardware_name = models.get(station.hardware.hardware_type, station.hardware.hardware_type) if station.hardware else 'UNSET'
     result = {'id': station.id, 'name': station.name, 'date': None, 'waypoints': [], 'points': [], 'hardware_name': hardware_name}
+    
     if after_date:
-        position_log = PositionLog.objects.filter(station=station,updated_on__gt=after_date).filter(
-                                                  Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('updated_at').first()
+        # For planner stations, look for future planned locations using timestamp field
+        if station.station_type == 'planner':
+            position_log = PositionLog.objects.filter(station=station, timestamp__gt=after_date).filter(
+                                                      Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('timestamp').first()
+        else:
+            position_log = PositionLog.objects.filter(station=station,updated_on__gt=after_date).filter(
+                                                      Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('updated_at').first()
+    elif before_date:
+        # For planner stations, look for planned locations before the specified date
+        if station.station_type == 'planner':
+            position_log = PositionLog.objects.filter(station=station, timestamp__lt=before_date).filter(
+                                                      Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('-timestamp').first()
+        else:
+            position_log = PositionLog.objects.filter(station=station,updated_on__lt=before_date).filter(
+                                                      Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('-updated_at').first()
     else:
-        position_log = PositionLog.objects.filter(station=station,updated_on__lt=before_date).filter(
-                                                  Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('-updated_at').first()
+        # For planner stations, look for future planned locations using timestamp field
+        if station.station_type == 'planner':
+            # Look for the earliest future planned location (timestamp > today)
+            position_log = PositionLog.objects.filter(station=station, timestamp__gt=timezone.now()).filter(
+                                                      Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('timestamp').first()
+        else:
+            position_log = PositionLog.objects.filter(station=station,updated_on__lt=before_date).filter(
+                                                      Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('-updated_at').first()
+    
     if position_log:
-        found_date = position_log.updated_at.astimezone(timezone.get_current_timezone()).date()
-        result['date'] = found_date
-        position_logs = list(PositionLog.objects.filter(station=station, updated_on=found_date).filter(
-                                                  Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('timestamp', 'updated_at').all())
-        weather_logs = list(TelemetryLog.objects.filter(station=station, updated_on=found_date, temperature__isnull=False).order_by('updated_at').all())
+        # For planner stations, handle navigation correctly
+        if station.station_type == 'planner':
+            if before_date:
+                # When before_date is provided (navigation), use the date from the found position_log
+                found_date = position_log.timestamp.astimezone(timezone.get_current_timezone()).date() if position_log.timestamp else position_log.updated_at.astimezone(timezone.get_current_timezone()).date()
+                result['date'] = found_date
+                
+                # Get planned locations for the specific date found
+                position_logs = list(PositionLog.objects.filter(station=station, timestamp__date=found_date).filter(
+                                                          Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('timestamp', 'updated_at').all())
+                # For planner stations, we don't have weather data for future dates
+                weather_logs = []
+            else:
+                # When no before_date (default view), find the farthest future planned date
+                latest_future_log = PositionLog.objects.filter(station=station, timestamp__gt=timezone.now()).filter(
+                                                      Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('-timestamp').first()
+                
+                if latest_future_log and latest_future_log.timestamp:
+                    found_date = latest_future_log.timestamp.astimezone(timezone.get_current_timezone()).date()
+                    result['date'] = found_date
+                    
+                    # Get only the planned locations for the farthest future date
+                    position_logs = list(PositionLog.objects.filter(station=station, timestamp__date=found_date).filter(
+                                                              Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('timestamp', 'updated_at').all())
+                    # For planner stations, we don't have weather data for future dates
+                    weather_logs = []
+                else:
+                    # Fallback to the original position_log if no future logs found
+                    found_date = position_log.timestamp.astimezone(timezone.get_current_timezone()).date() if position_log.timestamp else position_log.updated_at.astimezone(timezone.get_current_timezone()).date()
+                    result['date'] = found_date
+                    
+                    # Get planned locations for the fallback date
+                    position_logs = list(PositionLog.objects.filter(station=station, timestamp__date=found_date).filter(
+                                                              Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('timestamp', 'updated_at').all())
+                    # For planner stations, we don't have weather data for future dates
+                    weather_logs = []
+        else:
+            # For regular stations, use timestamp date; for others use updated_at date
+            if position_log.timestamp:
+                found_date = position_log.timestamp.astimezone(timezone.get_current_timezone()).date()
+            else:
+                found_date = position_log.updated_at.astimezone(timezone.get_current_timezone()).date()
+            
+            result['date'] = found_date
+            
+            position_logs = list(PositionLog.objects.filter(station=station, updated_on=found_date).filter(
+                                                      Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('timestamp', 'updated_at').all())
+            weather_logs = list(TelemetryLog.objects.filter(station=station, updated_on=found_date, temperature__isnull=False).order_by('updated_at').all())
+        
         wind_weather_logs = [sample for sample in weather_logs if sample.wind_speed != None]
         if wind_weather_logs != []: weather_logs = wind_weather_logs
 
         for log in position_logs:
             sample = closest(log.updated_at, weather_logs)
-            event = {'latitude': log.latitude, 'longitude': log.longitude, 'altitude': log.altitude, 'updated_at': log.updated_at}
+            # For planner stations, use timestamp if available; otherwise use updated_at
+            timestamp = log.timestamp if station.station_type == 'planner' and log.timestamp else log.updated_at
+            event = {'latitude': log.latitude, 'longitude': log.longitude, 'altitude': log.altitude, 'updated_at': timestamp}
             if sample:
                 if(sample.wind_speed != None): event['wind_speed'] = sample.wind_speed
                 if(sample.wind_direction != None): event['wind_direction'] = sample.wind_direction
                 event['temperature'] = sample.temperature
             result['points'].append(event)
 
-        text_logs = TextLog.objects.filter(station=station, updated_at__date=found_date).order_by('updated_at').all()
+        # For planner stations, get text logs for the farthest future date; for others use specific date
+        if station.station_type == 'planner':
+            text_logs = TextLog.objects.filter(station=station, position_log__timestamp__date=found_date).order_by('updated_at').all()
+        else:
+            text_logs = TextLog.objects.filter(station=station, updated_at__date=found_date).order_by('updated_at').all()
+        
         for text in text_logs:
             if text.position_log:
                 # Use position_log timestamp if available (for planned locations), otherwise use text.updated_at
