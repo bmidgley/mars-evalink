@@ -85,7 +85,8 @@ def path(request):
     before_date = localdate("before", request.GET.get('before_date'), current)
     after_date = localdate("after", request.GET.get('after_date'), None)
     models = {0: 'UNSET', 1: 'TLORA_V2', 2: 'TLORA_V1', 3: 'TLORA_V2_1_1P6', 4: 'TBEAM', 5: 'HELTEC_V2_0', 6: 'TBEAM_V0P7', 7: 'T_ECHO', 8: 'TLORA_V1_1P3', 9: 'RAK4631', 10: 'HELTEC_V2_1', 11: 'HELTEC_V1', 12: 'LILYGO_TBEAM_S3_CORE', 13: 'RAK11200', 14: 'NANO_G1', 15: 'TLORA_V2_1_1P8', 16: 'TLORA_T3_S3', 17: 'NANO_G1_EXPLORER', 18: 'NANO_G2_ULTRA', 19: 'LORA_TYPE', 20: 'WIPHONE', 21: 'WIO_WM1110', 22: 'RAK2560', 23: 'HELTEC_HRU_3601', 24: 'HELTEC_WIRELESS_BRIDGE', 25: 'STATION_G1', 26: 'RAK11310', 27: 'SENSELORA_RP2040', 28: 'SENSELORA_S3', 29: 'CANARYONE', 30: 'RP2040_LORA', 31: 'STATION_G2', 32: 'LORA_RELAY_V1', 33: 'NRF52840DK', 34: 'PPR', 35: 'GENIEBLOCKS', 36: 'NRF52_UNKNOWN', 37: 'PORTDUINO', 38: 'ANDROID_SIM', 39: 'DIY_V1', 40: 'NRF52840_PCA10059', 41: 'DR_DEV', 42: 'M5STACK', 43: 'HELTEC_V3', 44: 'HELTEC_WSL_V3', 45: 'BETAFPV_2400_TX', 46: 'BETAFPV_900_NANO_TX', 47: 'RPI_PICO', 48: 'HELTEC_WIRELESS_TRACKER', 49: 'HELTEC_WIRELESS_PAPER', 50: 'T_DECK', 51: 'T_WATCH_S3', 52: 'PICOMPUTER_S3', 53: 'HELTEC_HT62', 54: 'EBYTE_ESP32_S3', 55: 'ESP32_S3_PICO', 56: 'CHATTER_2', 57: 'HELTEC_WIRELESS_PAPER_V1_0', 58: 'HELTEC_WIRELESS_TRACKER_V1_0', 59: 'UNPHONE', 60: 'TD_LORAC', 61: 'CDEBYTE_EORA_S3', 62: 'TWC_MESH_V4', 63: 'NRF52_PROMICRO_DIY', 64: 'RADIOMASTER_900_BANDIT_NANO', 65: 'HELTEC_CAPSULE_SENSOR_V3', 66: 'HELTEC_VISION_MASTER_T190', 67: 'HELTEC_VISION_MASTER_E213', 68: 'HELTEC_VISION_MASTER_E290', 69: 'HELTEC_MESH_NODE_T114', 70: 'SENSECAP_INDICATOR', 71: 'TRACKER_T1000_E', 72: 'RAK3172', 73: 'WIO_E5', 74: 'RADIOMASTER_900_BANDIT', 75: 'ME25LS01_4Y10TD', 76: 'RP2040_FEATHER_RFM95', 77: 'M5STACK_COREBASIC', 78: 'M5STACK_CORE2', 79: 'RPI_PICO2', 80: 'M5STACK_CORES3', 81: 'SEEED_XIAO_S3', 82: 'MS24SF1', 83: 'TLORA_C6'}
-    result = {'id': station.id, 'name': station.name, 'date': None, 'waypoints': [], 'points': [], 'hardware_name': models.get(station.hardware.hardware_type, station.hardware.hardware_type)}
+    hardware_name = models.get(station.hardware.hardware_type, station.hardware.hardware_type) if station.hardware else 'UNSET'
+    result = {'id': station.id, 'name': station.name, 'date': None, 'waypoints': [], 'points': [], 'hardware_name': hardware_name}
     if after_date:
         position_log = PositionLog.objects.filter(station=station,updated_on__gt=after_date).filter(
                                                   Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('updated_at').first()
@@ -292,6 +293,71 @@ def campuses(request):
         })
     
     return JsonResponse({'campuses': campus_data}, json_dumps_params={'indent': 2})
+
+@login_required
+def add_location_to_plan(request):
+    """API endpoint to add a location to the planning station"""
+    if request.method != 'POST':
+        return HttpResponseNotFound("not found")
+    
+    try:
+        json_content = json.loads(request.body)
+        latitude = float(json_content['latitude'])
+        longitude = float(json_content['longitude'])
+        plan_date = json_content['date']  # YYYY-MM-DD format
+        plan_time = json_content['time']  # HH:MM format
+        
+        # Parse the datetime
+        datetime_str = f"{plan_date}T{plan_time}:00"
+        target_datetime = datetime.fromisoformat(datetime_str)
+        
+        # Make it timezone aware
+        campus = Campus.objects.get(name=os.getenv('CAMPUS'))
+        tz = pytz.timezone(campus.time_zone)
+        target_datetime = tz.localize(target_datetime)
+        
+        # Find the planning station
+        planner_station = Station.objects.filter(station_type='planner').first()
+        if not planner_station:
+            return JsonResponse({"error": "Planning station not found"}, status=404)
+        
+        # Create PositionLog for the target time
+        position_log = PositionLog(
+            station=planner_station,
+            latitude=latitude,
+            longitude=longitude,
+            altitude=None,
+            ground_speed=0,
+            ground_track=0,
+            timestamp=target_datetime,
+            updated_at=target_datetime,
+            updated_on=target_datetime.date()
+        )
+        position_log.save()
+        
+        # Create TextLog 1 second after the target time
+        text_datetime = target_datetime + timedelta(seconds=1)
+        text_log = TextLog(
+            station=planner_station,
+            position_log=position_log,
+            text="x",
+            serial_number=int(timezone.now().timestamp() * 1000000),  # Generate unique serial number
+            updated_at=text_datetime
+        )
+        text_log.save()
+        
+        return JsonResponse({
+            "success": True,
+            "message": "Location added to plan successfully",
+            "position_log_id": position_log.id,
+            "text_log_id": text_log.id,
+            "target_datetime": target_datetime.isoformat()
+        }, json_dumps_params={'indent': 2})
+        
+    except Exception as e:
+        return JsonResponse({
+            "error": f"Failed to add location to plan: {str(e)}"
+        }, status=500)
 
 @login_required
 def search(request):

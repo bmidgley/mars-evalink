@@ -382,6 +382,135 @@
             float: right;
         }
 
+        /* Location Popup Styles */
+        .location-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .popup-content {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            width: 400px;
+            max-width: 90%;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .popup-header {
+            padding: 20px 20px 10px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .popup-header h4 {
+            margin: 0;
+            color: #333;
+            font-size: 18px;
+        }
+
+        .popup-body {
+            padding: 20px;
+        }
+
+        .popup-footer {
+            padding: 10px 20px 20px 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .time-inputs {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .time-select {
+            flex: 1;
+            width: auto;
+        }
+
+        .time-separator {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
 
     </style>
 </head>
@@ -493,6 +622,40 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Location to Plan Popup -->
+    <div id="add-location-popup" class="location-popup">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h4>Add location to plan</h4>
+                <button type="button" class="close-btn" onclick="closeLocationPopup()">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="form-group">
+                    <label for="plan-date">Date:</label>
+                    <select id="plan-date" class="form-control">
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="plan-time-hour">Time:</label>
+                    <div class="time-inputs">
+                        <select id="plan-time-hour" class="form-control time-select">
+                            <!-- Hours 00-23 will be populated by JavaScript -->
+                        </select>
+                        <span class="time-separator">:</span>
+                        <select id="plan-time-minute" class="form-control time-select">
+                            <!-- Minutes 00-59 will be populated by JavaScript -->
+                        </select>
+                    </div>
+                </div>
+                <div class="popup-footer">
+                    <button type="button" class="btn btn-primary" onclick="saveLocationToPlan()">Save</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeLocationPopup()">Close</button>
                 </div>
             </div>
         </div>
@@ -1187,6 +1350,10 @@
                     info.style.visibility = 'visible';
                     info.innerText = feature.get("label");
                 }
+            } else {
+                // Clicked on empty area - show location popup
+                const coordinates = ol.proj.toLonLat(event.coordinate);
+                showLocationPopup(coordinates[1], coordinates[0]);
             }
         });
 
@@ -1577,6 +1744,150 @@
                 populateCrewDropdown(name);
             }, 1000);
         }
+
+        // Location popup functionality
+        let selectedCoordinates = null;
+
+        function showLocationPopup(latitude, longitude) {
+            selectedCoordinates = { latitude: latitude, longitude: longitude };
+            
+            // Populate date dropdown with next 10 days
+            populateDateDropdown();
+            
+            // Populate time dropdowns
+            populateTimeDropdowns();
+            
+            // Show the popup
+            const popup = document.getElementById('add-location-popup');
+            popup.style.display = 'flex';
+        }
+
+        function closeLocationPopup() {
+            const popup = document.getElementById('add-location-popup');
+            popup.style.display = 'none';
+            selectedCoordinates = null;
+        }
+
+        function populateDateDropdown() {
+            const dateSelect = document.getElementById('plan-date');
+            dateSelect.innerHTML = '';
+            
+            const today = new Date();
+            for (let i = 0; i < 10; i++) {
+                const date = new Date(today);
+                date.setDate(today.getDate() + i);
+                
+                const option = document.createElement('option');
+                option.value = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+                option.textContent = formatDate(date);
+                
+                // Select today by default
+                if (i === 0) {
+                    option.selected = true;
+                }
+                
+                dateSelect.appendChild(option);
+            }
+        }
+
+        function populateTimeDropdowns() {
+            const hourSelect = document.getElementById('plan-time-hour');
+            const minuteSelect = document.getElementById('plan-time-minute');
+            
+            // Clear existing options
+            hourSelect.innerHTML = '';
+            minuteSelect.innerHTML = '';
+            
+            // Populate hours (00-23)
+            for (let i = 0; i < 24; i++) {
+                const option = document.createElement('option');
+                option.value = i.toString().padStart(2, '0');
+                option.textContent = i.toString().padStart(2, '0');
+                
+                // Select 09:00 by default
+                if (i === 9) {
+                    option.selected = true;
+                }
+                
+                hourSelect.appendChild(option);
+            }
+            
+            // Populate minutes (00-59)
+            for (let i = 0; i < 60; i++) {
+                const option = document.createElement('option');
+                option.value = i.toString().padStart(2, '0');
+                option.textContent = i.toString().padStart(2, '0');
+                
+                // Select 00 minutes by default
+                if (i === 0) {
+                    option.selected = true;
+                }
+                
+                minuteSelect.appendChild(option);
+            }
+        }
+
+        function formatDate(date) {
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        async function saveLocationToPlan() {
+            if (!selectedCoordinates) {
+                alert('No location selected');
+                return;
+            }
+            
+            const date = document.getElementById('plan-date').value;
+            const hour = document.getElementById('plan-time-hour').value;
+            const minute = document.getElementById('plan-time-minute').value;
+            
+            // Create time string in HH:MM format
+            const time = `${hour}:${minute}`;
+            
+            // Prepare data to send to backend
+            const data = {
+                latitude: selectedCoordinates.latitude,
+                longitude: selectedCoordinates.longitude,
+                date: date,
+                time: time
+            };
+            
+            try {
+                // Send data to backend
+                const response = await fetch('/add-location-to-plan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok || !result.success) {
+                    alert(`Error saving location: ${result.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                alert(`Failed to save location: ${error.message}`);
+            }
+            
+            // Close the popup
+            closeLocationPopup();
+        }
+
+        // Close popup when clicking outside of it
+        document.getElementById('add-location-popup').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeLocationPopup();
+            }
+        });
     </script>
 </body>
 
