@@ -79,6 +79,7 @@ class TextLog(models.Model):
     text = models.TextField(db_index=True)
     serial_number = models.BigIntegerField(db_index=True, unique=True)
     updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
+    updated_on = models.DateField(null=True, db_index=True)
     def serialize(self, show_all=False):
         station_type = self.station.station_type
         if station_type == 'ignore' and show_all: station_type = 'infrastructure'

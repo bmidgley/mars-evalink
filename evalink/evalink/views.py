@@ -47,6 +47,94 @@ def features(request):
             station.features['properties']['id'] = station.id
             station.features['properties']['days_old'] = (now - station.updated_at).days
             station.features['properties']['hours_old'] = (now - station.updated_at).total_seconds() / 3600.0
+            
+            # Special handling for planner stations
+            if station.station_type == 'planner':
+                # Get text messages for today using updated_on field
+                local_date = now.date()
+                text_logs = TextLog.objects.filter(
+                    station=station,
+                    updated_on=local_date
+                ).order_by('updated_at')
+                
+                # Add text messages to features
+                texts = []
+                for text_log in text_logs:
+                    if text_log.position_log:
+                        texts.append({
+                            'text': text_log.text,
+                            'time': text_log.updated_at.isoformat(),
+                            'position': [text_log.position_log.longitude, text_log.position_log.latitude]
+                        })
+                
+                station.features['properties']['texts'] = texts
+                
+                # Calculate position based on current time
+                # Use updated_on field which is already timezone-adjusted
+                local_date = now.date()
+                position_logs = PositionLog.objects.filter(
+                    station=station,
+                    updated_on=local_date
+                ).order_by('timestamp')
+                
+                if position_logs.exists():
+                    current_time = now.time()
+                    first_log = position_logs.first()
+                    last_log = position_logs.last()
+                    
+                    # Convert log timestamps to local time for comparison
+                    first_log_local_time = first_log.timestamp.astimezone(tz).time()
+                    last_log_local_time = last_log.timestamp.astimezone(tz).time()
+                    
+                    if current_time < first_log_local_time:
+                        # Before first time - use first point
+                        station.features['geometry']['coordinates'] = [first_log.longitude, first_log.latitude]
+                        station.features['properties']['time'] = first_log.timestamp.isoformat()
+                    elif current_time > last_log_local_time:
+                        # After last time - use last point
+                        station.features['geometry']['coordinates'] = [last_log.longitude, last_log.latitude]
+                        station.features['properties']['time'] = last_log.timestamp.isoformat()
+                    else:
+                        # Between times - interpolate between closest points
+                        prev_log = None
+                        next_log = None
+                        
+                        for log in position_logs:
+                            log_local_time = log.timestamp.astimezone(tz).time()
+                            if log_local_time <= current_time:
+                                prev_log = log
+                            elif log_local_time > current_time and next_log is None:
+                                next_log = log
+                                break
+                        
+                        if prev_log and next_log:
+                            # Interpolate between prev_log and next_log
+                            prev_time = prev_log.timestamp.astimezone(tz).time()
+                            next_time = next_log.timestamp.astimezone(tz).time()
+                            
+                            # Calculate interpolation factor
+                            total_diff = (datetime.combine(date.today(), next_time) - datetime.combine(date.today(), prev_time)).total_seconds()
+                            current_diff = (datetime.combine(date.today(), current_time) - datetime.combine(date.today(), prev_time)).total_seconds()
+                            factor = current_diff / total_diff if total_diff > 0 else 0
+                            
+                            # Interpolate coordinates
+                            interp_lon = prev_log.longitude + (next_log.longitude - prev_log.longitude) * factor
+                            interp_lat = prev_log.latitude + (next_log.latitude - prev_log.latitude) * factor
+                            
+                            station.features['geometry']['coordinates'] = [interp_lon, interp_lat]
+                            station.features['properties']['time'] = now.isoformat()
+                        elif prev_log:
+                            # Only previous log available
+                            station.features['geometry']['coordinates'] = [prev_log.longitude, prev_log.latitude]
+                            station.features['properties']['time'] = prev_log.timestamp.isoformat()
+                        else:
+                            # Only next log available
+                            station.features['geometry']['coordinates'] = [next_log.longitude, next_log.latitude]
+                            station.features['properties']['time'] = next_log.timestamp.isoformat()
+                else:
+                    # No position logs for today - keep default position
+                    pass
+            
             if fence:
                 coordinates = station.features['geometry'].get('coordinates')
                 if coordinates:
@@ -230,6 +318,35 @@ def localdate(label, my_date, default):
     my_aware_datetime = timezone.make_aware(my_naive_datetime, timezone=tz)
     return my_aware_datetime
 
+def create_heard_messages(text, message_id, current_time):
+    """Create 'heard' TextLog entries for stations outside campus inner geofence"""
+    from django.db import IntegrityError
+    
+    campus = Campus.objects.get(name=os.getenv('CAMPUS'))
+    inner_fence = campus.inner_geofence
+    tz = pytz.timezone(campus.time_zone)
+    
+    if inner_fence:
+        outside_stations = Station.objects.filter(
+            last_position__isnull=False
+        ).exclude(hardware_number=int(os.getenv('MQTT_NODE_NUMBER')))  # Exclude the gateway station
+
+        for outside_station in outside_stations:
+            if outside_station.outside(inner_fence):
+                heard_text = f"heard: {text}"
+                heard_log = TextLog(
+                    station=outside_station,
+                    position_log=outside_station.last_position,
+                    serial_number=message_id + outside_station.id,  # Make unique by adding station id
+                    text=heard_text,
+                    updated_at=current_time,
+                    updated_on=current_time.astimezone(tz).date())
+                try:
+                    heard_log.save()
+                except IntegrityError:
+                    # Skip if duplicate serial number
+                    continue
+
 @login_required
 def chat(request):
     gateway_node_number = int(os.getenv('MQTT_NODE_NUMBER'))
@@ -247,6 +364,12 @@ def chat(request):
         client.publish(topic, data)
         print("\n", topic, data)
         client.disconnect()
+        
+        # Create "heard" messages for stations outside campus inner geofence
+        current_time = datetime.now(timezone.utc)
+        message_id = int(current_time.timestamp() * 1000000)  # Generate unique message ID
+        create_heard_messages(message, message_id, current_time)
+        
         return JsonResponse({"sent": "ok"}, json_dumps_params={'indent': 2})
 
     if request.method == "POST":
@@ -263,10 +386,11 @@ def chat(request):
             client.connect(os.getenv('MQTT_SERVER'), int(os.getenv('MQTT_PORT')), 60)
             client.publish(topic, data)
             client.disconnect()
-            # do not process the message now or it will appear as a duplicate when it's seen on the network
-            # timestamp = int(datetime.timestamp(datetime.now()))
-            # text_message = {'channel': 0, 'from': gateway_node_number, 'id': timestamp, 'payload': {'text': message}, 'timestamp': timestamp, 'type': 'text'}
-            # handler.process_message(text_message)
+            
+            # Create "heard" messages for stations outside campus inner geofence
+            current_time = datetime.now(timezone.utc)
+            message_id = int(current_time.timestamp() * 1000000)  # Generate unique message ID
+            create_heard_messages(message, message_id, current_time)
 
     form = ChatForm()
     texts = TextLog.objects.all().order_by('-updated_at')[:20:1]
@@ -430,7 +554,8 @@ def add_location_to_plan(request):
             position_log=position_log,
             text="Objective",
             serial_number=int(timezone.now().timestamp() * 1000000),  # Generate unique serial number
-            updated_at=text_datetime
+            updated_at=text_datetime,
+            updated_on=text_datetime.astimezone(tz).date()
         )
         text_log.save()
         

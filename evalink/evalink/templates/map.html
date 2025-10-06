@@ -975,6 +975,23 @@
                         }
                     }
 
+                    // Handle planner station text messages
+                    features.forEach(feature => {
+                        const nodeType = feature.get('node_type');
+                        const texts = feature.get('texts');
+                        
+                        if (nodeType === 'planner' && texts && texts.length > 0) {
+                            // Display text messages as flags on the map
+                            texts.forEach(textData => {
+                                if (textData.position && textData.position.length === 2) {
+                                    const coordinates = ol.proj.fromLonLat([textData.position[0], textData.position[1]]);
+                                    const formattedTime = formattedDate(textData.time);
+                                    drawTemporaryMarker(coordinates, "flag", `[${formattedTime}] ${textData.text}`);
+                                }
+                            });
+                        }
+                    });
+
                     vectorSource.addFeatures(features);
 
                     updateMarkerList();

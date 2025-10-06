@@ -172,31 +172,9 @@ def process_message(message):
             position_log=station.last_position,
             serial_number=message.get("id"), # + (hash(text) % 100000),
             text=text,
-            updated_at=current_time)
+            updated_at=current_time,
+            updated_on=current_time.astimezone(tz).date())
         text_log.save()
-
-        # Create "heard" TextLog entries for stations outside campus inner geofence
-        campus = Campus.objects.get(name=os.getenv('CAMPUS'))
-        inner_fence = campus.inner_geofence
-        if inner_fence:
-            outside_stations = Station.objects.filter(
-                last_position__isnull=False
-            ).exclude(id=station.id)  # Exclude the station that sent the message
-
-            for outside_station in outside_stations:
-                if outside_station.outside(inner_fence):
-                    heard_text = f"heard: {text}"
-                    heard_log = TextLog(
-                        station=outside_station,
-                        position_log=outside_station.last_position,
-                        serial_number=message.get("id") + outside_station.id,  # Make unique by adding station id
-                        text=heard_text,
-                        updated_at=current_time)
-                    try:
-                        heard_log.save()
-                    except IntegrityError:
-                        # Skip if duplicate serial number
-                        continue
 
         if "texts" not in station.features["properties"]: station.features["properties"]["texts"] = [] # remove
         station.features["properties"]["texts"].append({
