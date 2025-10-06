@@ -1800,8 +1800,8 @@
                 option.value = date.toISOString().split('T')[0]; // YYYY-MM-DD format
                 option.textContent = formatDate(date);
                 
-                // Select today by default
-                if (i === 0) {
+                // Select tomorrow by default
+                if (i === 1) {
                     option.selected = true;
                 }
                 
@@ -1831,8 +1831,8 @@
                 hourSelect.appendChild(option);
             }
             
-            // Populate minutes (00-59)
-            for (let i = 0; i < 60; i++) {
+            // Populate minutes (00, 05, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55)
+            for (let i = 0; i < 60; i += 5) {
                 const option = document.createElement('option');
                 option.value = i.toString().padStart(2, '0');
                 option.textContent = i.toString().padStart(2, '0');
