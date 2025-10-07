@@ -1399,6 +1399,11 @@
                 if (popup.style.display === 'flex') {
                     closeLocationPopup();
                 }
+                // Close delete confirmation dialog if it's open
+                const deletePopup = document.getElementById('delete-confirmation-popup');
+                if (deletePopup.style.display === 'flex') {
+                    closeDeleteConfirmationDialog();
+                }
             }
         });
 
