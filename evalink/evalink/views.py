@@ -172,6 +172,7 @@ def path(request):
     if station == None: return HttpResponseNotFound("not found")
     campus = Campus.objects.get(name=os.getenv('CAMPUS'))
     g = campus.inner_geofence
+    today = date.today()
     
     # For planner stations, default to showing future planned locations
     if station.station_type == 'planner':
@@ -213,7 +214,6 @@ def path(request):
         # For planner stations, look for future planned locations using updated_on field
         if station.station_type == 'planner':
             # Look for the earliest future planned location (updated_on > today)
-            today = date.today()
             position_log = PositionLog.objects.filter(station=station, updated_on__gt=today).filter(
                                                       Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('updated_on').first()
         else:
