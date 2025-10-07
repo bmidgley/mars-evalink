@@ -559,12 +559,19 @@ def add_location_to_plan(request):
         )
         text_log.save()
         
+        # Calculate the day after the point was saved for before_date
+        next_day = target_datetime.date() + timedelta(days=1)
+        
+        # Create redirect URL with planner name, ID, and before_date
+        redirect_url = f"/?name={planner_station.name}&id={planner_station.id}&before_date={next_day.strftime('%Y-%m-%d')}"
+        
         return JsonResponse({
             "success": True,
             "message": "Location added to plan successfully",
             "position_log_id": position_log.id,
             "text_log_id": text_log.id,
-            "target_datetime": target_datetime.isoformat()
+            "target_datetime": target_datetime.isoformat(),
+            "redirect_url": redirect_url
         }, json_dumps_params={'indent': 2})
         
     except Exception as e:

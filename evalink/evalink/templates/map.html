@@ -1071,10 +1071,10 @@
             });
             vectorTrackSource.addFeature(feature);
             
-            // Position the map over the first coordinate in the list
+            // Position the map over the last coordinate in the list (last position recorded on the day)
             if(data.points && data.points.length > 0) {
-                const firstPoint = data.points[0];
-                const coordinates = ol.proj.fromLonLat([firstPoint.longitude, firstPoint.latitude]);
+                const lastPoint = data.points[data.points.length - 1];
+                const coordinates = ol.proj.fromLonLat([lastPoint.longitude, lastPoint.latitude]);
                 map.getView().animate({
                     center: coordinates,
                     zoom: 16,
@@ -1909,6 +1909,11 @@
                 
                 if (!response.ok || !result.success) {
                     alert(`Error saving location: ${result.error || 'Unknown error'}`);
+                } else {
+                    // Redirect to the URL returned by the backend
+                    if (result.redirect_url) {
+                        window.location.href = result.redirect_url;
+                    }
                 }
             } catch (error) {
                 alert(`Failed to save location: ${error.message}`);
