@@ -223,8 +223,8 @@ def path(request):
     if position_log:
         # For planner stations, handle navigation correctly
         if station.station_type == 'planner':
-            if before_date:
-                # When before_date is provided (navigation), use the date from the found position_log
+            if before_date or after_date:
+                # When before_date or after_date is provided (navigation), use the date from the found position_log
                 found_date = position_log.updated_on if position_log.updated_on else position_log.updated_at.date()
                 result['date'] = found_date
                 
