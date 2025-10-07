@@ -493,6 +493,15 @@
             background-color: #545b62;
         }
 
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
         .close-btn {
             background: none;
             border: none;
@@ -657,6 +666,25 @@
                     <button type="button" class="btn btn-primary" onclick="saveLocationToPlan()">Save</button>
                     <button type="button" class="btn btn-secondary" onclick="closeLocationPopup()">Close</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Planner Point Confirmation Dialog -->
+    <div id="delete-confirmation-popup" class="location-popup">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h4>Delete Planner Point</h4>
+                <button type="button" class="close-btn" onclick="closeDeleteConfirmationDialog()">&times;</button>
+            </div>
+            <div class="popup-body">
+                <p>Are you sure you want to delete this planner point?</p>
+                <p><strong>This action cannot be undone.</strong></p>
+                <div id="delete-point-details"></div>
+            </div>
+            <div class="popup-footer">
+                <button type="button" class="btn btn-danger" onclick="confirmDeletePlannerPoint()">Delete</button>
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteConfirmationDialog()">Cancel</button>
             </div>
         </div>
     </div>
@@ -847,7 +875,16 @@
             for(const point of waypoints) {
                 let formattedTime = formattedDate(point.updated_at);
                 let coordinates = ol.proj.fromLonLat([point.longitude, point.latitude]);
-                drawTemporaryMarker(coordinates, "flag", `[${formattedTime}] ${point.text}`);
+                
+                // Check if this is a planner waypoint by looking for position_log_id
+                const metadata = point.position_log_id ? {
+                    isPlannerFlag: true,
+                    positionLogId: point.position_log_id,
+                    textLogId: point.text_log_id,
+                    timestamp: point.updated_at
+                } : null;
+                
+                drawTemporaryMarker(coordinates, "flag", `[${formattedTime}] ${point.text}`, metadata);
             }
         }
 
@@ -986,7 +1023,16 @@
                                 if (textData.position && textData.position.length === 2) {
                                     const coordinates = ol.proj.fromLonLat([textData.position[0], textData.position[1]]);
                                     const formattedTime = formattedDate(textData.time);
-                                    drawTemporaryMarker(coordinates, "flag", `[${formattedTime}] ${textData.text}`);
+                                    
+                                    // Add metadata for planner flags
+                                    const metadata = {
+                                        isPlannerFlag: true,
+                                        positionLogId: textData.position_log_id,
+                                        textLogId: textData.text_log_id,
+                                        timestamp: textData.time
+                                    };
+                                    
+                                    drawTemporaryMarker(coordinates, "flag", `[${formattedTime}] ${textData.text}`, metadata);
                                 }
                             });
                         }
@@ -1252,10 +1298,11 @@
             return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(icons[nodeType] || svgTower);
         }
 
-        function drawTemporaryMarker(coordinates, icon, label) {
+        function drawTemporaryMarker(coordinates, icon, label, metadata = null) {
             const temporaryMarker = new ol.Feature({
                 geometry: new ol.geom.Point(coordinates),
                 label: label,
+                metadata: metadata, // Store additional data for planner flags
             });
 
             temporaryMarker.setStyle(
@@ -1374,12 +1421,16 @@
 
             if (feature) {
                 const name = feature.get("name");
+                const metadata = feature.get("metadata");
 
                 if(name) {
                     // activate commonpanel
                     populatePath(name);
                     // zoomToMarker(name);
                     populateCrewDropdown(name);
+                } else if (metadata && metadata.isPlannerFlag) {
+                    // This is a planner flag - show delete confirmation dialog
+                    showDeleteConfirmationDialog(metadata);
                 } else {
                     info.style.left = event.pixel[0] + 'px';
                     info.style.top = event.pixel[1] + 'px';
@@ -1927,6 +1978,79 @@
         document.getElementById('add-location-popup').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeLocationPopup();
+            }
+        });
+
+        // Delete confirmation dialog functionality
+        let selectedPlannerMetadata = null;
+
+        function showDeleteConfirmationDialog(metadata) {
+            selectedPlannerMetadata = metadata;
+            
+            // Populate the details section
+            const detailsDiv = document.getElementById('delete-point-details');
+            const formattedTime = formattedDate(metadata.timestamp);
+            detailsDiv.innerHTML = `
+                <div style="margin-top: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">
+                    <strong>Point Details:</strong><br>
+                    Time: ${formattedTime}<br>
+                    Position Log ID: ${metadata.positionLogId}<br>
+                    Text Log ID: ${metadata.textLogId}
+                </div>
+            `;
+            
+            // Show the popup
+            const popup = document.getElementById('delete-confirmation-popup');
+            popup.style.display = 'flex';
+        }
+
+        function closeDeleteConfirmationDialog() {
+            const popup = document.getElementById('delete-confirmation-popup');
+            popup.style.display = 'none';
+            selectedPlannerMetadata = null;
+        }
+
+        async function confirmDeletePlannerPoint() {
+            if (!selectedPlannerMetadata) {
+                alert('No planner point selected for deletion');
+                return;
+            }
+            
+            try {
+                // Send delete request to backend
+                const response = await fetch('/delete-planner-point', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        position_log_id: selectedPlannerMetadata.positionLogId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok || !result.success) {
+                    alert(`Error deleting planner point: ${result.error || 'Unknown error'}`);
+                } else {
+                    // Close the dialog
+                    closeDeleteConfirmationDialog();
+                    
+                    // Redirect to the URL returned by the backend
+                    if (result.redirect_url) {
+                        window.location.href = result.redirect_url;
+                    }
+                }
+            } catch (error) {
+                alert(`Failed to delete planner point: ${error.message}`);
+            }
+        }
+
+        // Close delete confirmation popup when clicking outside of it
+        document.getElementById('delete-confirmation-popup').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDeleteConfirmationDialog();
             }
         });
     </script>

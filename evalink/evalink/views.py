@@ -61,11 +61,14 @@ def features(request):
                 texts = []
                 for text_log in text_logs:
                     if text_log.position_log:
-                        texts.append({
+                        text_data = {
                             'text': text_log.text,
                             'time': text_log.updated_at.isoformat(),
-                            'position': [text_log.position_log.longitude, text_log.position_log.latitude]
-                        })
+                            'position': [text_log.position_log.longitude, text_log.position_log.latitude],
+                            'position_log_id': text_log.position_log.id,
+                            'text_log_id': text_log.id
+                        }
+                        texts.append(text_data)
                 
                 station.features['properties']['texts'] = texts
                 
@@ -290,7 +293,21 @@ def path(request):
                 timestamp = text.updated_at
                 if text.position_log.timestamp:
                     timestamp = text.position_log.timestamp
-                result['waypoints'].append({'latitude': text.position_log.latitude, 'longitude': text.position_log.longitude, 'altitude': text.position_log.altitude, 'updated_at': timestamp, 'text': text.text})
+                
+                waypoint_data = {
+                    'latitude': text.position_log.latitude, 
+                    'longitude': text.position_log.longitude, 
+                    'altitude': text.position_log.altitude, 
+                    'updated_at': timestamp, 
+                    'text': text.text
+                }
+                
+                # Add IDs for planner stations to enable deletion
+                if station.station_type == 'planner':
+                    waypoint_data['position_log_id'] = text.position_log.id
+                    waypoint_data['text_log_id'] = text.id
+                
+                result['waypoints'].append(waypoint_data)
     else:
         result['date'] = before_date.isoformat()[0:10]
     return JsonResponse(result, json_dumps_params={'indent': 2})
@@ -577,6 +594,61 @@ def add_location_to_plan(request):
     except Exception as e:
         return JsonResponse({
             "error": f"Failed to add location to plan: {str(e)}"
+        }, status=500)
+
+@login_required
+def delete_planner_point(request):
+    """API endpoint to delete a planner point (both position_log and text_log)"""
+    if request.method != 'POST':
+        return HttpResponseNotFound("not found")
+    
+    try:
+        json_content = json.loads(request.body)
+        position_log_id = json_content.get('position_log_id')
+        
+        if not position_log_id:
+            return JsonResponse({"error": "position_log_id is required"}, status=400)
+        
+        # Find the position log
+        position_log = PositionLog.objects.filter(id=position_log_id).first()
+        if not position_log:
+            return JsonResponse({"error": "Position log not found"}, status=404)
+        
+        # Verify it's from a planner station
+        if position_log.station.station_type != 'planner':
+            return JsonResponse({"error": "Only planner points can be deleted"}, status=400)
+        
+        # Find the associated text log
+        text_log = TextLog.objects.filter(position_log=position_log).first()
+        
+        # Get the date of the point for redirect calculation
+        point_date = position_log.timestamp.date() if position_log.timestamp else position_log.updated_on
+        
+        # Delete the text log first (due to foreign key constraints)
+        if text_log:
+            text_log.delete()
+        
+        # Delete the position log
+        position_log.delete()
+        
+        # Calculate the day after the deleted point for before_date redirect
+        next_day = point_date + timedelta(days=1)
+        
+        # Find the planner station for redirect
+        planner_station = position_log.station
+        
+        # Create redirect URL with planner name, ID, and before_date
+        redirect_url = f"/?name={planner_station.name}&id={planner_station.id}&before_date={next_day.strftime('%Y-%m-%d')}"
+        
+        return JsonResponse({
+            "success": True,
+            "message": "Planner point deleted successfully",
+            "redirect_url": redirect_url
+        }, json_dumps_params={'indent': 2})
+        
+    except Exception as e:
+        return JsonResponse({
+            "error": f"Failed to delete planner point: {str(e)}"
         }, status=500)
 
 @login_required

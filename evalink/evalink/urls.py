@@ -31,5 +31,6 @@ urlpatterns = [
     path('search/', views.search, name='search'),
     path('chat/', views.chat, name='chat'),
     path('campuses.json', views.campuses, name='campuses'),
-    path('add-location-to-plan', views.add_location_to_plan, name='add_location_to_plan')
+    path('add-location-to-plan', views.add_location_to_plan, name='add_location_to_plan'),
+    path('delete-planner-point', views.delete_planner_point, name='delete_planner_point')
 ]
