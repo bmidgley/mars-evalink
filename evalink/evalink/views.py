@@ -313,7 +313,8 @@ def path(request):
                 
                 result['waypoints'].append(waypoint_data)
     else:
-        result['date'] = before_date.isoformat()[0:10]
+        if before_date:
+            result['date'] = before_date.isoformat()[0:10]
     return JsonResponse(result, json_dumps_params={'indent': 2})
 
 def closest(time, samples):
