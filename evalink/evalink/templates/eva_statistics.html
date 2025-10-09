@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVA Statistics - {{ campus_name }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .error {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .number {
+            text-align: right;
+        }
+        .summary {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .section {
+            margin: 30px 0;
+        }
+        .section h2 {
+            color: #1976d2;
+            border-bottom: 2px solid #1976d2;
+            padding-bottom: 10px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #1976d2;
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 1px solid #1976d2;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .back-link:hover {
+            background-color: #1976d2;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to Map</a>
+        
+        <h1>EVA Statistics - {{ campus_name }}</h1>
+        
+        {% if error %}
+            <div class="error">
+                <strong>Error:</strong> {{ error }}
+            </div>
+        {% else %}
+            <!-- Summary Section -->
+            <div class="summary">
+                <h2>Summary</h2>
+                <p><strong>Total EVAs:</strong> {{ total_stats.count }}</p>
+                <p><strong>Total Distance:</strong> {{ total_stats.total_distance|floatformat:2 }} km</p>
+                <p><strong>Average Distance per EVA:</strong> {{ total_stats.average_distance|floatformat:2 }} km</p>
+            </div>
+
+            <!-- Statistics by Year -->
+            <div class="section">
+                <h2>Statistics by Year</h2>
+                {% if stats_by_year %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Year</th>
+                                <th class="number">Number of EVAs</th>
+                                <th class="number">Total Distance (km)</th>
+                                <th class="number">Average Distance (km)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for year, data in stats_by_year %}
+                                <tr>
+                                    <td>{{ year }}</td>
+                                    <td class="number">{{ data.count }}</td>
+                                    <td class="number">{{ data.total_distance|floatformat:2 }}</td>
+                                    <td class="number">{{ data.average_distance|floatformat:2 }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No EVA data available by year.</p>
+                {% endif %}
+            </div>
+
+            <!-- Statistics by Month -->
+            <div class="section">
+                <h2>Statistics by Month</h2>
+                {% if stats_by_month %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th class="number">Number of EVAs</th>
+                                <th class="number">Total Distance (km)</th>
+                                <th class="number">Average Distance (km)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for month_key, data in stats_by_month %}
+                                <tr>
+                                    <td>{{ month_key }}</td>
+                                    <td class="number">{{ data.count }}</td>
+                                    <td class="number">{{ data.total_distance|floatformat:2 }}</td>
+                                    <td class="number">{{ data.average_distance|floatformat:2 }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>No EVA data available by month.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
