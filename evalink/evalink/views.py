@@ -14,6 +14,8 @@ import os
 import json
 import zoneinfo
 from . import handler
+import math
+from collections import defaultdict
 
 load_dotenv()
 
@@ -798,3 +800,156 @@ def search(request):
             name = f'{station.name} on {date}'
             paths.append({'name': name, 'url': url})
     return JsonResponse({'items': paths}, json_dumps_params={'indent': 2})
+
+def haversine_distance(lat1, lon1, lat2, lon2):
+    """Calculate the great circle distance between two points on Earth in kilometers."""
+    # Convert latitude and longitude from degrees to radians
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    
+    # Haversine formula
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    c = 2 * math.asin(math.sqrt(a))
+    
+    # Radius of earth in kilometers
+    r = 6371
+    return c * r
+
+@login_required
+def eva_statistics(request):
+    """View to display EVA statistics in an HTML table"""
+    campus = Campus.objects.get(name=os.getenv('CAMPUS'))
+    inner_fence = campus.inner_geofence
+    
+    if not inner_fence:
+        return render(request, 'eva_statistics.html', {
+            'error': 'No inner geofence configured for this campus'
+        })
+    
+    # Get all stations (excluding infrastructure and ignore types)
+    stations = Station.objects.exclude(
+        Q(station_type='infrastructure') | Q(station_type='ignore')
+    ).all()
+    
+    # Statistics dictionaries
+    stats_by_year = defaultdict(lambda: {'count': 0, 'total_distance': 0.0, 'distances': []})
+    stats_by_month = defaultdict(lambda: {'count': 0, 'total_distance': 0.0, 'distances': []})
+    total_stats = {'count': 0, 'total_distance': 0.0, 'distances': []}
+    
+    def is_outside_fence(lat, lon):
+        """Check if coordinates are outside the inner geofence"""
+        return (lat < inner_fence.latitude1 or lat > inner_fence.latitude2 or 
+                lon < inner_fence.longitude1 or lon > inner_fence.longitude2)
+    
+    def detect_eva_trips(position_logs):
+        """Detect EVA trips from position logs by finding sequences outside the geofence"""
+        trips = []
+        current_trip = []
+        outside_fence = False
+        
+        for log in position_logs:
+            is_outside = is_outside_fence(log.latitude, log.longitude)
+            
+            if is_outside and not outside_fence:
+                # Starting a new trip outside the fence
+                current_trip = [log]
+                outside_fence = True
+            elif is_outside and outside_fence:
+                # Continuing current trip
+                current_trip.append(log)
+            elif not is_outside and outside_fence:
+                # Ending current trip
+                if len(current_trip) >= 2:  # Need at least 2 points to calculate distance
+                    trips.append(current_trip)
+                current_trip = []
+                outside_fence = False
+        
+        # Handle case where trip ends while still outside fence
+        if outside_fence and len(current_trip) >= 2:
+            trips.append(current_trip)
+        
+        return trips
+    
+    def calculate_trip_distance(trip_logs):
+        """Calculate total distance for a trip"""
+        total_distance = 0.0
+        for i in range(1, len(trip_logs)):
+            prev_log = trip_logs[i-1]
+            curr_log = trip_logs[i]
+            distance = haversine_distance(
+                prev_log.latitude, prev_log.longitude,
+                curr_log.latitude, curr_log.longitude
+            )
+            total_distance += distance
+        return total_distance
+    
+    # Process each station
+    for station in stations:
+        # Get all position logs for this station, ordered by time
+        position_logs = PositionLog.objects.filter(
+            station=station
+        ).order_by('updated_at')
+        
+        if not position_logs.exists():
+            continue
+        
+        # Detect EVA trips for this station
+        eva_trips = detect_eva_trips(position_logs)
+        
+        # Process each detected trip
+        for trip in eva_trips:
+            if len(trip) < 2:
+                continue
+                
+            trip_distance = calculate_trip_distance(trip)
+            
+            # Use the first log's timestamp for year/month classification
+            first_log = trip[0]
+            trip_date = first_log.updated_at
+            year = trip_date.year
+            month_key = f"{year}-{trip_date.month:02d}"
+            
+            # Update statistics
+            stats_by_year[year]['count'] += 1
+            stats_by_year[year]['total_distance'] += trip_distance
+            stats_by_year[year]['distances'].append(trip_distance)
+            
+            stats_by_month[month_key]['count'] += 1
+            stats_by_month[month_key]['total_distance'] += trip_distance
+            stats_by_month[month_key]['distances'].append(trip_distance)
+            
+            total_stats['count'] += 1
+            total_stats['total_distance'] += trip_distance
+            total_stats['distances'].append(trip_distance)
+    
+    # Calculate averages
+    for year_data in stats_by_year.values():
+        if year_data['count'] > 0:
+            year_data['average_distance'] = year_data['total_distance'] / year_data['count']
+        else:
+            year_data['average_distance'] = 0.0
+    
+    for month_data in stats_by_month.values():
+        if month_data['count'] > 0:
+            month_data['average_distance'] = month_data['total_distance'] / month_data['count']
+        else:
+            month_data['average_distance'] = 0.0
+    
+    if total_stats['count'] > 0:
+        total_stats['average_distance'] = total_stats['total_distance'] / total_stats['count']
+    else:
+        total_stats['average_distance'] = 0.0
+    
+    # Sort data for display
+    sorted_years = sorted(stats_by_year.items())
+    sorted_months = sorted(stats_by_month.items())
+    
+    context = {
+        'total_stats': total_stats,
+        'stats_by_year': sorted_years,
+        'stats_by_month': sorted_months,
+        'campus_name': campus.name
+    }
+    
+    return render(request, 'eva_statistics.html', context)

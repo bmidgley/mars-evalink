@@ -32,5 +32,6 @@ urlpatterns = [
     path('chat/', views.chat, name='chat'),
     path('campuses.json', views.campuses, name='campuses'),
     path('add-location-to-plan', views.add_location_to_plan, name='add_location_to_plan'),
-    path('delete-planner-point', views.delete_planner_point, name='delete_planner_point')
+    path('delete-planner-point', views.delete_planner_point, name='delete_planner_point'),
+    path('eva-statistics/', views.eva_statistics, name='eva_statistics')
 ]
