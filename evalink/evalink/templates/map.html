@@ -70,10 +70,45 @@
             font-family: 'Roboto', sans-serif;
         }
 
-        .marker-item {
-            margin-bottom: 5px;
-            cursor: pointer;
-            font-family: 'Roboto', sans-serif;
+        /* Mobile-specific improvements for better touch interaction */
+        @media (max-width: 768px) {
+            /* Increase touch targets for mobile */
+            .marker-item {
+                padding: 8px 12px;
+                margin-bottom: 8px;
+                font-size: 14px;
+                min-height: 44px; /* Apple's recommended minimum touch target */
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 6px;
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+            }
+            
+            .marker-item:hover {
+                background-color: #e9ecef;
+            }
+            
+            /* Make the map more touch-friendly */
+            #map {
+                touch-action: manipulation;
+            }
+            
+            /* Improve popup visibility on mobile */
+            .location-popup {
+                max-width: 90vw;
+                margin: 20px auto;
+            }
+            
+            .popup-content {
+                padding: 20px;
+            }
+            
+            .form-control {
+                font-size: 16px; /* Prevents zoom on iOS */
+                padding: 12px;
+            }
         }
 
         #time-slider-container {
@@ -139,7 +174,7 @@
             bottom: 40px;
             left: 10px;
             background-color: #fff;
-            z-index: 2;
+            z-index: 1001;
             border-radius: 5px;
             padding: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
@@ -1380,6 +1415,9 @@
                         anchor: [0.5, 1],
                         anchorXUnits: 'fraction',
                         anchorYUnits: 'fraction',
+                        // Increase hit area for better mobile interaction
+                        hitDetectionImage: createSvgDataURL(icon, 0, 0, 255),
+                        hitDetectionImageSize: [32, 32],
                     }),
                 })
             );
@@ -1426,6 +1464,9 @@
                         anchor: [0.5, 1],
                         anchorXUnits: 'fraction',
                         anchorYUnits: 'fraction',
+                        // Increase hit area for better mobile interaction
+                        hitDetectionImage: icon,
+                        hitDetectionImageSize: [32, 32],
                     }),
                 });
             },
@@ -1486,7 +1527,8 @@
         });
         map.addOverlay(overlay);
 
-        map.on('click', function (event) {
+        // Handle both click and touch events for better mobile support
+        function handleMapInteraction(event) {
             const feature = map.forEachFeatureAtPixel(event.pixel, function (feature) {
                 return feature;
             });
@@ -1513,6 +1555,40 @@
                 // Clicked on empty area - show location popup
                 const coordinates = ol.proj.toLonLat(event.coordinate);
                 showLocationPopup(coordinates[1], coordinates[0]);
+            }
+        }
+
+        // Add both click and singleclick event listeners for better mobile support
+        map.on('click', handleMapInteraction);
+        map.on('singleclick', handleMapInteraction);
+        
+        // Add touch-specific event handling for mobile devices
+        let touchStartTime = 0;
+        let touchStartPixel = null;
+        
+        map.on('pointerdown', function(event) {
+            if (event.originalEvent.type === 'touchstart') {
+                touchStartTime = Date.now();
+                touchStartPixel = event.pixel;
+            }
+        });
+        
+        map.on('pointerup', function(event) {
+            if (event.originalEvent.type === 'touchend') {
+                const touchDuration = Date.now() - touchStartTime;
+                const pixelMoved = touchStartPixel ? 
+                    Math.abs(event.pixel[0] - touchStartPixel[0]) + Math.abs(event.pixel[1] - touchStartPixel[1]) : 0;
+                
+                // Only trigger if it was a quick tap (not a drag) and didn't move much
+                if (touchDuration < 500 && pixelMoved < 10) {
+                    // Create a synthetic event object similar to click events
+                    const syntheticEvent = {
+                        pixel: event.pixel,
+                        coordinate: event.coordinate,
+                        originalEvent: event.originalEvent
+                    };
+                    handleMapInteraction(syntheticEvent);
+                }
             }
         });
 
