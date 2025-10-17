@@ -16,6 +16,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.4.0/ol.css" type="text/css">
     <script src="https://cdn.jsdelivr.net/npm/ol@10.4.0/dist/ol.js"></script>
     <style>
+        #emergency-device-panel.hidden {
+            display: none !important;
+        }
+
         html,
         body {
             font-size: 12px;
@@ -137,10 +141,22 @@
             background-color: #fff;
             z-index: 2;
             border-radius: 5px;
-
             padding: 10px;
-            border-radius: 5px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            transition: left 0.3s ease;
+        }
+
+        #message-tab.collapsed {
+            left: -168px;
+        }
+
+        #message-tab.collapsed .message-content {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .message-content {
+            transition: opacity 0.3s ease;
         }
 
         #geo-tab {
@@ -164,22 +180,9 @@
             left: 231px;
         }
 
-        #search-panel {
-            position: absolute;
-            top: 60px;
-            left: 10px;
-            background-color: white;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            font-family: 'Roboto', sans-serif;
-            width: 250px;
-        }
-
         #campus-panel {
             position: absolute;
-            top: 275px;
+            top: 50px;
             left: 10px;
             background-color: white;
             padding: 15px;
@@ -188,6 +191,51 @@
             z-index: 1000;
             font-family: 'Roboto', sans-serif;
             width: 200px;
+        }
+
+        #search-panel {
+            position: absolute;
+            top: 120px;
+            left: 10px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            font-family: 'Roboto', sans-serif;
+            width: 250px;
+            transition: left 0.3s ease;
+        }
+
+        #search-panel.collapsed {
+            left: -218px;
+        }
+
+        #search-panel.collapsed .search-content {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .drawer-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            padding: 0;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .drawer-toggle:hover {
+            color: #333;
+        }
+
+        .search-content {
+            transition: opacity 0.3s ease;
         }
 
         #campus-panel h4 {
@@ -571,13 +619,18 @@
     </div>
 
     <div id="message-tab" class="hidden">
-        <h3>Messages</h3>
-        <ul id="message-list"></ul>
-        <form class="form" method="post" id="message-post">
-            <input type="text" name="message" class="form-control" id="form-control" placeholder="Message ..." required>
-            
-            <input type="submit" value="Send Message">
-        </form>
+        <button class="drawer-toggle" onclick="toggleMessagePanel()">
+            <span>Messages</span>
+            <span id="message-toggle-icon">◀</span>
+        </button>
+        <div class="message-content">
+            <ul id="message-list"></ul>
+            <form class="form" method="post" id="message-post">
+                <input type="text" name="message" class="form-control" id="form-control" placeholder="Message ..." required>
+                
+                <input type="submit" value="Send Message">
+            </form>
+        </div>
     </div>
 
     <div id="geo-tab">
@@ -588,26 +641,31 @@
         <i class="bi bi-layers"></i>
     </button>
 
-    <div id="search-panel">
-        <h4>Search Tracks</h4>
-        <div class="search-controls">
-            <input type="text" id="date-input" placeholder="2025-12-25" title="Constrains search results to this day or starting on this day if the end date is also present. YYYY-MM-DD format.">
-            <input type="text" id="endDate" placeholder="2025-12-31" title="Constrains search results to end by this date. Start date above must be present. YYYY-MM-DD format.">
-            <button type="button" onclick="populateHistory()" title="Searches the currently visible part of the map for logged tracks">
-                Search area...
-            </button>
-        </div>
-        <div class="search-spinner" id="searchSpinner">
-            <div class="spinner"></div>
-        </div>
-        <select id="historyDropdown" onChange="populateUrlPath(this.options[this.selectedIndex].value);">
-        </select>
-    </div>
-
     <div id="campus-panel">
         <select id="campusDropdown" onChange="centerMapOnCampus(this.options[this.selectedIndex].value);">
             <option value="">Loading campuses...</option>
         </select>
+    </div>
+
+    <div id="search-panel">
+        <button class="drawer-toggle" onclick="toggleSearchPanel()">
+            <span>Search Tracks</span>
+            <span id="search-toggle-icon">◀</span>
+        </button>
+        <div class="search-content">
+            <div class="search-controls">
+                <input type="text" id="date-input" placeholder="2025-12-25" title="Constrains search results to this day or starting on this day if the end date is also present. YYYY-MM-DD format.">
+                <input type="text" id="endDate" placeholder="2025-12-31" title="Constrains search results to end by this date. Start date above must be present. YYYY-MM-DD format.">
+                <button type="button" onclick="populateHistory()" title="Searches the currently visible part of the map for logged tracks">
+                    Search area...
+                </button>
+            </div>
+            <div class="search-spinner" id="searchSpinner">
+                <div class="spinner"></div>
+            </div>
+            <select id="historyDropdown" onChange="populateUrlPath(this.options[this.selectedIndex].value);">
+            </select>
+        </div>
     </div>
 
     <div id="emergency-device-panel" class="hidden">
@@ -2071,6 +2129,33 @@
                 closeDeleteConfirmationDialog();
             }
         });
+
+        // Drawer toggle functions
+        function toggleSearchPanel() {
+            const panel = document.getElementById('search-panel');
+            const icon = document.getElementById('search-toggle-icon');
+            
+            if (panel.classList.contains('collapsed')) {
+                panel.classList.remove('collapsed');
+                icon.textContent = '◀';
+            } else {
+                panel.classList.add('collapsed');
+                icon.textContent = '▶';
+            }
+        }
+
+        function toggleMessagePanel() {
+            const panel = document.getElementById('message-tab');
+            const icon = document.getElementById('message-toggle-icon');
+            
+            if (panel.classList.contains('collapsed')) {
+                panel.classList.remove('collapsed');
+                icon.textContent = '◀';
+            } else {
+                panel.classList.add('collapsed');
+                icon.textContent = '▶';
+            }
+        }
     </script>
 </body>
 
