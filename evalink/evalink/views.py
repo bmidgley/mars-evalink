@@ -67,9 +67,14 @@ def features(request):
                 texts = []
                 for text_log in text_logs:
                     if text_log.position_log:
+                        # Use position_log timestamp if available (for planned locations), otherwise use updated_at
+                        timestamp = text_log.updated_at
+                        if text_log.position_log.timestamp:
+                            timestamp = text_log.position_log.timestamp
+                        
                         text_data = {
                             'text': text_log.text,
-                            'time': text_log.updated_at.isoformat(),
+                            'time': timestamp.isoformat(),
                             'position': [text_log.position_log.longitude, text_log.position_log.latitude],
                             'position_log_id': text_log.position_log.id,
                             'text_log_id': text_log.id
