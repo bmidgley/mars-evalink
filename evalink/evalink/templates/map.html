@@ -1236,6 +1236,15 @@
 
             closeButton.onclick = function() {
                 timeSliderContainer.style.display = 'none';
+                
+                // Remove station name and ID from URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                urlParams.delete('name');
+                urlParams.delete('id');
+                
+                // Update the URL without the station parameters
+                const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+                window.history.replaceState({}, '', newUrl);
             }
 
             timeSliderContainer.style.display = 'block';
