@@ -70,20 +70,36 @@
             font-family: 'Roboto', sans-serif;
         }
 
+        /* Desktop marker item spacing */
+        .marker-item {
+            margin-bottom: 8px;
+        }
+
         /* Mobile-specific improvements for better touch interaction */
-        @media (max-width: 768px) {
-            /* Increase touch targets for mobile */
+        @media (max-width: 768px) and (pointer: coarse) {
+            /* Make marker list more compact on mobile */
+            #marker-list {
+                padding: 8px;
+                max-width: 150px;
+                max-height: 50vh;
+                font-size: 11px;
+            }
+            
+            /* Compact marker items for mobile */
             .marker-item {
-                padding: 8px 12px;
-                margin-bottom: 8px;
-                font-size: 14px;
-                min-height: 44px; /* Apple's recommended minimum touch target */
+                padding: 4px 6px;
+                margin-bottom: 3px;
+                font-size: 11px;
+                min-height: 32px; /* Smaller touch target for compact layout */
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                border-radius: 6px;
+                border-radius: 4px;
                 background-color: #f8f9fa;
                 border: 1px solid #dee2e6;
+                line-height: 1.2;
+                text-align: center;
+                word-break: break-word;
             }
             
             .marker-item:hover {
@@ -108,6 +124,24 @@
             .form-control {
                 font-size: 16px; /* Prevents zoom on iOS */
                 padding: 12px;
+            }
+        }
+
+        /* Extra compact for very small screens */
+        @media (max-width: 480px) and (pointer: coarse) {
+            #marker-list {
+                padding: 6px;
+                max-width: 120px;
+                max-height: 45vh;
+                font-size: 10px;
+            }
+            
+            .marker-item {
+                padding: 3px 4px;
+                margin-bottom: 2px;
+                font-size: 10px;
+                min-height: 28px;
+                line-height: 1.1;
             }
         }
 
