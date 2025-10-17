@@ -174,29 +174,21 @@ class Command(BaseCommand):
         sorted_years = sorted(stats_by_year.items())
         sorted_months = sorted(stats_by_month.items())
 
-        # Generate HTML content
+        # Generate standalone HTML content with inline CSS
         html_content = self.generate_html_content(
             total_stats, sorted_years, sorted_months, campus_name
         )
 
-        # Generate CSS content
-        css_content = self.generate_css_content()
-
-        # Write files
+        # Write standalone HTML file
         html_file = os.path.join(output_dir, 'eva_statistics.html')
-        css_file = os.path.join(output_dir, 'eva_statistics.css')
 
         with open(html_file, 'w', encoding='utf-8') as f:
             f.write(html_content)
 
-        with open(css_file, 'w', encoding='utf-8') as f:
-            f.write(css_content)
-
         self.stdout.write(
             self.style.SUCCESS(f'EVA statistics report generated successfully!')
         )
-        self.stdout.write(f'HTML file: {html_file}')
-        self.stdout.write(f'CSS file: {css_file}')
+        self.stdout.write(f'Standalone HTML file: {html_file}')
         self.stdout.write(f'Total EVAs: {total_stats["count"]}')
         self.stdout.write(f'Total Distance: {total_stats["total_distance"]:.2f} km')
 
@@ -208,7 +200,99 @@ class Command(BaseCommand):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EVA Statistics - {campus_name}</title>
-    <link rel="stylesheet" href="eva_statistics.css">
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }}
+
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+
+        h1 {{
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+        }}
+
+        .generated-info {{
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            margin-bottom: 30px;
+        }}
+
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }}
+
+        th, td {{
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }}
+
+        th {{
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }}
+
+        tr:nth-child(even) {{
+            background-color: #f9f9f9;
+        }}
+
+        tr:hover {{
+            background-color: #f5f5f5;
+        }}
+
+        .number {{
+            text-align: right;
+        }}
+
+        .summary {{
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+        }}
+
+        .section {{
+            margin: 30px 0;
+        }}
+
+        .section h2 {{
+            color: #1976d2;
+            border-bottom: 2px solid #1976d2;
+            padding-bottom: 10px;
+        }}
+
+        @media print {{
+            body {{
+                background-color: white;
+                margin: 0;
+            }}
+            
+            .container {{
+                box-shadow: none;
+                border-radius: 0;
+            }}
+            
+            tr:hover {{
+                background-color: transparent;
+            }}
+        }}
+    </style>
 </head>
 <body>
     <div class="container">
@@ -297,97 +381,3 @@ class Command(BaseCommand):
 </html>'''
         
         return html
-
-    def generate_css_content(self):
-        """Generate CSS content for the report"""
-        return '''body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
-    background-color: #f5f5f5;
-    line-height: 1.6;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    background-color: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-h1 {
-    color: #333;
-    text-align: center;
-    margin-bottom: 10px;
-}
-
-.generated-info {
-    text-align: center;
-    color: #666;
-    font-style: italic;
-    margin-bottom: 30px;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 20px 0;
-}
-
-th, td {
-    border: 1px solid #ddd;
-    padding: 12px;
-    text-align: left;
-}
-
-th {
-    background-color: #f8f9fa;
-    font-weight: bold;
-    color: #333;
-}
-
-tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-tr:hover {
-    background-color: #f5f5f5;
-}
-
-.number {
-    text-align: right;
-}
-
-.summary {
-    background-color: #e3f2fd;
-    border-left: 4px solid #2196f3;
-    padding: 15px;
-    margin: 20px 0;
-}
-
-.section {
-    margin: 30px 0;
-}
-
-.section h2 {
-    color: #1976d2;
-    border-bottom: 2px solid #1976d2;
-    padding-bottom: 10px;
-}
-
-@media print {
-    body {
-        background-color: white;
-        margin: 0;
-    }
-    
-    .container {
-        box-shadow: none;
-        border-radius: 0;
-    }
-    
-    tr:hover {
-        background-color: transparent;
-    }
-}'''
