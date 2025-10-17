@@ -219,8 +219,11 @@ def path(request):
         # For planner stations, look for future planned locations using updated_on field
         if station.station_type == 'planner':
             # Look for the earliest future planned location (updated_on > today)
-            # For planner stations, include all locations regardless of geofence
+            # If no future plans exist, fall back to the most recent plan
             position_log = PositionLog.objects.filter(station=station, updated_on__gt=today).order_by('updated_on').first()
+            if not position_log:
+                # No future plans, get the most recent plan
+                position_log = PositionLog.objects.filter(station=station).order_by('-updated_on').first()
         else:
             position_log = PositionLog.objects.filter(station=station,updated_on__lt=before_date).filter(
                                                       Q(latitude__gt=g.latitude2) | Q(latitude__lt=g.latitude1) | Q(longitude__gt=g.longitude2) | Q(longitude__lt=g.longitude1)).order_by('-updated_at').first()
@@ -253,15 +256,27 @@ def path(request):
                     # For planner stations, we don't have weather data for future dates
                     weather_logs = []
                 else:
-                    # Fallback to the original position_log if no future logs found
-                    found_date = position_log.updated_on if position_log.updated_on else position_log.updated_at.date()
-                    result['date'] = found_date
-                    
-                    # Get planned locations for the fallback date
-                    # For planner stations, include all locations regardless of geofence
-                    position_logs = list(PositionLog.objects.filter(station=station, updated_on=found_date).order_by('timestamp', 'updated_at').all())
-                    # For planner stations, we don't have weather data for future dates
-                    weather_logs = []
+                    # No future plans, use the most recent plan date
+                    latest_log = PositionLog.objects.filter(station=station).order_by('-updated_on').first()
+                    if latest_log and latest_log.updated_on:
+                        found_date = latest_log.updated_on
+                        result['date'] = found_date
+                        
+                        # Get planned locations for the most recent date
+                        # For planner stations, include all locations regardless of geofence
+                        position_logs = list(PositionLog.objects.filter(station=station, updated_on=found_date).order_by('timestamp', 'updated_at').all())
+                        # For planner stations, we don't have weather data for future dates
+                        weather_logs = []
+                    else:
+                        # Fallback to the original position_log if no logs found
+                        found_date = position_log.updated_on if position_log.updated_on else position_log.updated_at.date()
+                        result['date'] = found_date
+                        
+                        # Get planned locations for the fallback date
+                        # For planner stations, include all locations regardless of geofence
+                        position_logs = list(PositionLog.objects.filter(station=station, updated_on=found_date).order_by('timestamp', 'updated_at').all())
+                        # For planner stations, we don't have weather data for future dates
+                        weather_logs = []
         else:
             # For regular stations, use timestamp date; for others use updated_at date
             campus_tz = pytz.timezone(campus.time_zone)
