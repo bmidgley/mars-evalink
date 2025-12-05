@@ -168,3 +168,10 @@ class EvaStation(models.Model):
     station = models.ForeignKey(Station, on_delete=models.CASCADE, db_index=True)
     eva_vehicle = models.ForeignKey(EvaVehicle, on_delete=models.SET_NULL, null=True)
     eva_crewmember = models.ForeignKey(EvaCrewmember, on_delete=models.SET_NULL, null=True)
+
+class Aircraft(models.Model):
+    hex = models.CharField(max_length=255, db_index=True, unique=True)
+    campus = models.ForeignKey(Campus, on_delete=models.CASCADE, db_index=True)
+    features = models.JSONField(null=True, blank=True)
+    updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
+    updated_on = models.DateField(null=True, db_index=True)

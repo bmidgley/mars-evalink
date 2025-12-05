@@ -193,3 +193,48 @@ def log_measurements(station, features, current_time):
 def iso_time(_seconds):
     # nodes are reporting current time incorrectly, so disregard and return now in iso
     return datetime.now().isoformat()
+
+def process_adsb_aircraft(hex_code, message):
+    # Extract latitude and longitude from message
+    lat = message.get('lat')
+    lon = message.get('lon')
+    
+    # Skip if no position data
+    if lat is None or lon is None:
+        print(f'skipping aircraft {hex_code} because it has no position data')
+        return
+    
+    # Check all campuses to see if aircraft is within outer geofence
+    campuses = Campus.objects.filter(outer_geofence__isnull=False).select_related('outer_geofence')
+    
+    for campus in campuses:
+        if campus.outer_geofence and not campus.outer_geofence.outside(lat, lon):
+            # Aircraft is within this campus's outer geofence
+            tz = pytz.timezone(campus.time_zone)
+            current_time = datetime.now(timezone.utc)
+            current_time_tz = current_time.astimezone(tz)
+            today = current_time_tz.date()
+            
+            # Update or create Aircraft record
+            aircraft, created = Aircraft.objects.get_or_create(
+                hex=hex_code,
+                defaults={
+                    'campus': campus,
+                    'features': message,
+                    'updated_at': current_time,
+                    'updated_on': today,
+                }
+            )
+            
+            if not created:
+                # Update existing record
+                aircraft.campus = campus
+                aircraft.features = message
+                aircraft.updated_at = current_time
+                aircraft.updated_on = today
+                aircraft.save()
+            
+            # print(f'aircraft {aircraft.hex} updated at {current_time} on {today}')
+            return
+    
+    # Aircraft is not within any campus outer geofence, do nothing

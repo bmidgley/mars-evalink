@@ -4,7 +4,7 @@ from django.utils import timezone
 from evalink.models import *
 from datetime import date, timedelta, datetime
 from django.utils.dateparse import parse_date
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.db.models import Q
 from dotenv import load_dotenv
 from .forms import ChatForm
@@ -838,6 +838,283 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     # Radius of earth in kilometers
     r = 6371
     return c * r
+
+@login_required
+def aircraft(request):
+    """Return aircraft data from database, limited to entries updated within the last 15 minutes"""
+    # Get the cutoff time (15 minutes ago)
+    cutoff_time = timezone.now() - timedelta(minutes=15)
+    
+    # Query aircraft updated within the last 15 minutes
+    aircraft_list = Aircraft.objects.filter(updated_at__gte=cutoff_time).select_related('campus')
+    
+    # Build aircraft data from database records
+    aircraft_data = []
+    for aircraft in aircraft_list:
+        if not aircraft.features:
+            continue
+        
+        # Extract data from features JSONField
+        features = aircraft.features
+        lat = features.get('lat')
+        lon = features.get('lon')
+        
+        # Skip if no position data
+        if lat is None or lon is None:
+            continue
+        
+        # Build aircraft object in expected format
+        aircraft_obj = {
+            'hex': aircraft.hex,
+            'lat': lat,
+            'lon': lon,
+            'alt_baro': features.get('alt_baro'),
+            'gs': features.get('gs'),
+            'track': features.get('track'),
+            'flight': features.get('flight'),
+            'squawk': features.get('squawk'),
+            'category': features.get('category'),
+            'messages': features.get('messages'),
+            'seen': features.get('seen'),
+        }
+        
+        aircraft_data.append(aircraft_obj)
+    
+    # Return in expected format
+    return JsonResponse({
+        'now': int(timezone.now().timestamp()),
+        'aircraft': aircraft_data
+    }, json_dumps_params={'indent': 2})
+
+@login_required
+def oldest_consecutive_inside(request):
+    """Find the oldest day with more than two consecutive position logs inside the inner fence"""
+    campus = Campus.objects.get(name=os.getenv('CAMPUS'))
+    inner_fence = campus.inner_geofence
+    
+    if not inner_fence:
+        return render(request, 'oldest_consecutive_inside.html', {
+            'error': 'No inner geofence configured for this campus',
+            'campus_name': campus.name
+        })
+    
+    def is_inside_fence(lat, lon):
+        """Check if coordinates are inside the inner geofence"""
+        return (lat >= inner_fence.latitude1 and lat <= inner_fence.latitude2 and 
+                lon >= inner_fence.longitude1 and lon <= inner_fence.longitude2)
+    
+    # Get all position logs ordered by date (oldest first)
+    # Exclude infrastructure and planner stations
+    infra_station_ids = Station.objects.filter(station_type='infrastructure').values_list('pk', flat=True)
+    planner_station_ids = Station.objects.filter(station_type='planner').values_list('pk', flat=True)
+    
+    position_logs = PositionLog.objects.exclude(
+        station_id__in=list(infra_station_ids) + list(planner_station_ids)
+    ).filter(updated_on__isnull=False).order_by('updated_on', 'updated_at')
+    
+    # Group position logs by day and station
+    logs_by_day_station = defaultdict(list)
+    for log in position_logs:
+        if log.updated_on:
+            key = (log.updated_on, log.station_id)
+            logs_by_day_station[key].append(log)
+    
+    # Find the oldest day with >2 consecutive positions inside the fence
+    oldest_date = None
+    
+    # Sort days from oldest to newest
+    sorted_days = sorted(logs_by_day_station.keys(), key=lambda x: x[0])
+    
+    # First pass: find the oldest date with >2 consecutive positions inside
+    for day_date, station_id in sorted_days:
+        logs = logs_by_day_station[(day_date, station_id)]
+        # Sort logs by time within the day
+        logs.sort(key=lambda x: x.updated_at)
+        
+        # Find consecutive sequences inside the fence
+        consecutive_inside = []
+        current_sequence = []
+        
+        for log in logs:
+            if is_inside_fence(log.latitude, log.longitude):
+                current_sequence.append(log)
+            else:
+                if len(current_sequence) > 2:
+                    consecutive_inside.append(len(current_sequence))
+                current_sequence = []
+        
+        # Check if sequence continues to end of day
+        if len(current_sequence) > 2:
+            consecutive_inside.append(len(current_sequence))
+        
+        # If we found any sequence with >2 consecutive positions inside
+        if consecutive_inside:
+            oldest_date = day_date
+            break
+    
+    if oldest_date is None:
+        return render(request, 'oldest_consecutive_inside.html', {
+            'message': 'No day found with more than two consecutive position logs inside the inner fence',
+            'campus_name': campus.name
+        })
+    
+    # Second pass: collect all devices on the oldest date
+    devices_data = []
+    for day_date, station_id in sorted_days:
+        if day_date != oldest_date:
+            continue
+        
+        logs = logs_by_day_station[(day_date, station_id)]
+        # Sort logs by time within the day
+        logs.sort(key=lambda x: x.updated_at)
+        
+        # Find consecutive sequences inside the fence
+        consecutive_inside = []
+        current_sequence = []
+        
+        for log in logs:
+            if is_inside_fence(log.latitude, log.longitude):
+                current_sequence.append(log)
+            else:
+                if len(current_sequence) > 2:
+                    consecutive_inside.append(len(current_sequence))
+                current_sequence = []
+        
+        # Check if sequence continues to end of day
+        if len(current_sequence) > 2:
+            consecutive_inside.append(len(current_sequence))
+        
+        # If we found any sequence with >2 consecutive positions inside
+        if consecutive_inside:
+            station = Station.objects.get(pk=station_id)
+            # Get the maximum consecutive count for this device
+            max_consecutive = max(consecutive_inside)
+            devices_data.append({
+                'device_name': station.name,
+                'device_id': station.id,
+                'consecutive_positions': max_consecutive,
+                'all_consecutive_counts': consecutive_inside
+            })
+    
+    # Sort devices by consecutive count (descending)
+    devices_data.sort(key=lambda x: x['consecutive_positions'], reverse=True)
+    
+    # Count total position logs in the entire database (excluding infrastructure and planner stations)
+    total_position_logs = PositionLog.objects.exclude(
+        station_id__in=list(infra_station_ids) + list(planner_station_ids)
+    ).count()
+    
+    return render(request, 'oldest_consecutive_inside.html', {
+        'date': oldest_date.isoformat(),
+        'devices': devices_data,
+        'campus_name': campus.name,
+        'total_position_logs': total_position_logs
+    })
+
+@login_required
+def clear_redundant_logs(request):
+    """Clear redundant position logs for a given date, keeping only first and last in each consecutive run"""
+    if request.method != 'POST':
+        return HttpResponseNotFound("not found")
+    
+    campus = Campus.objects.get(name=os.getenv('CAMPUS'))
+    inner_fence = campus.inner_geofence
+    
+    if not inner_fence:
+        return render(request, 'oldest_consecutive_inside.html', {
+            'error': 'No inner geofence configured for this campus',
+            'campus_name': campus.name
+        })
+    
+    # Get the date from POST data
+    date_str = request.POST.get('date')
+    if not date_str:
+        return render(request, 'oldest_consecutive_inside.html', {
+            'error': 'Date parameter is required',
+            'campus_name': campus.name
+        })
+    
+    try:
+        target_date = parse_date(date_str)
+        if target_date is None:
+            return render(request, 'oldest_consecutive_inside.html', {
+                'error': 'Invalid date format',
+                'campus_name': campus.name
+            })
+    except Exception as e:
+        return render(request, 'oldest_consecutive_inside.html', {
+            'error': f'Invalid date: {str(e)}',
+            'campus_name': campus.name
+        })
+    
+    def is_inside_fence(lat, lon):
+        """Check if coordinates are inside the inner geofence"""
+        return (lat >= inner_fence.latitude1 and lat <= inner_fence.latitude2 and 
+                lon >= inner_fence.longitude1 and lon <= inner_fence.longitude2)
+    
+    # Get all position logs for the target date
+    # Exclude infrastructure and planner stations
+    infra_station_ids = Station.objects.filter(station_type='infrastructure').values_list('pk', flat=True)
+    planner_station_ids = Station.objects.filter(station_type='planner').values_list('pk', flat=True)
+    
+    position_logs = PositionLog.objects.exclude(
+        station_id__in=list(infra_station_ids) + list(planner_station_ids)
+    ).filter(updated_on=target_date).order_by('station_id', 'updated_at')
+    
+    # Group position logs by station
+    logs_by_station = defaultdict(list)
+    for log in position_logs:
+        logs_by_station[log.station_id].append(log)
+    
+    total_deleted = 0
+    stations_processed = 0
+    
+    # Process each station
+    for station_id, logs in logs_by_station.items():
+        # Sort logs by time
+        logs.sort(key=lambda x: x.updated_at)
+        
+        # Find consecutive sequences inside the fence
+        consecutive_runs = []
+        current_run = []
+        
+        for log in logs:
+            if is_inside_fence(log.latitude, log.longitude):
+                current_run.append(log)
+            else:
+                if len(current_run) > 2:
+                    consecutive_runs.append(current_run)
+                current_run = []
+        
+        # Check if sequence continues to end of day
+        if len(current_run) > 2:
+            consecutive_runs.append(current_run)
+        
+        # Process each consecutive run
+        for run in consecutive_runs:
+            if len(run) <= 2:
+                continue
+            
+            # Keep first and last, delete intermediate ones
+            first_log = run[0]
+            last_log = run[-1]
+            intermediate_logs = run[1:-1]
+            
+            # Delete intermediate logs, but skip those referenced by TextLog
+            for log_to_delete in intermediate_logs:
+                # Skip if this PositionLog is referenced by a TextLog
+                if TextLog.objects.filter(position_log=log_to_delete).exists():
+                    continue
+                
+                # Delete the PositionLog (this will cascade delete TelemetryLog and NeighborLog)
+                log_to_delete.delete()
+                total_deleted += 1
+        
+        if consecutive_runs:
+            stations_processed += 1
+    
+    # Redirect back to the oldest_consecutive_inside page
+    return redirect('oldest_consecutive_inside')
 
 @login_required
 def eva_statistics(request):

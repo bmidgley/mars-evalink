@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oldest Consecutive Inside - {{ campus_name }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .error {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .info {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .number {
+            text-align: right;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #1976d2;
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 1px solid #1976d2;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .back-link:hover {
+            background-color: #1976d2;
+            color: white;
+        }
+        .clear-button {
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 20px 0;
+            transition: background-color 0.3s;
+        }
+        .clear-button:hover {
+            background-color: #b71c1c;
+        }
+        .clear-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .form-container {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 4px;
+        }
+        .success-message {
+            color: #2e7d32;
+            background-color: #e8f5e9;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to Map</a>
+        
+        <h1>Oldest Consecutive Inside - {{ campus_name }}</h1>
+        
+        {% if error %}
+            <div class="error">
+                <strong>Error:</strong> {{ error }}
+            </div>
+        {% elif message %}
+            <div class="info">
+                <strong>Message:</strong> {{ message }}
+            </div>
+        {% else %}
+            {% if date %}
+                <div class="info">
+                    <h2>Date: {{ date }}</h2>
+                    <p>Found {{ devices|length }} device(s) with more than two consecutive position logs inside the inner fence.</p>
+                    <p><strong>Total position logs in the db:</strong> {{ total_position_logs }}</p>
+                </div>
+
+                {% if devices %}
+                    <div class="form-container">
+                        <form id="clearForm" method="POST" action="{% url 'clear_redundant_logs' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="date" value="{{ date }}">
+                            <button type="submit" class="clear-button" id="clearButton">
+                                Clear redundant logs for this date
+                            </button>
+                        </form>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Device Name</th>
+                                <th>Device ID</th>
+                                <th class="number">Max Consecutive Positions</th>
+                                <th class="number">All Consecutive Counts</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for device in devices %}
+                                <tr>
+                                    <td>{{ device.device_name }}</td>
+                                    <td>{{ device.device_id }}</td>
+                                    <td class="number">{{ device.consecutive_positions }}</td>
+                                    <td class="number">{{ device.all_consecutive_counts|join:", " }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <script>
+        const clearForm = document.getElementById('clearForm');
+        if (clearForm) {
+            clearForm.addEventListener('submit', function(e) {
+                const button = document.getElementById('clearButton');
+                if (button) {
+                    button.disabled = true;
+                    button.textContent = 'Processing...';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+

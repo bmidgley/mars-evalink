@@ -1534,6 +1534,191 @@
             source: vectorTrackSource,
         });
 
+        // Aircraft tracking
+        const aircraftSource = new ol.source.Vector();
+        const aircraftLayer = new ol.layer.Vector({
+            source: aircraftSource,
+            style: function (feature) {
+                const track = feature.get('track');
+                const alt = feature.get('alt_baro') || 0;
+                const speed = feature.get('gs') || 0;
+                
+                // Create airplane icon
+                const airplaneIcon = createAirplaneIcon(alt, speed);
+                
+                // Convert track (degrees, 0=north, 90=east) to OpenLayers rotation (radians)
+                // In OpenLayers, rotation is counter-clockwise from east (0 radians = east)
+                // The airplane icon now points east by default (after SVG transform)
+                // Need to add 180° to fix backwards orientation
+                // To point north (track=0°), we need 90° rotation = π/2 radians
+                // To point east (track=90°), we need 180° rotation = π radians
+                // To point south (track=180°), we need 270° rotation = 3π/2 radians
+                // To point west (track=270°), we need 0° rotation = 0 radians
+                // Formula: rotation = (track + 90) * π / 180
+                let rotation = 0;
+                if (track !== null && track !== undefined && !isNaN(track)) {
+                    rotation = ((track + 90) * Math.PI) / 180;
+                }
+                
+                return new ol.style.Style({
+                    image: new ol.style.Icon({
+                        src: airplaneIcon,
+                        imgSize: [24, 24],
+                        anchor: [0.5, 0.5],
+                        anchorXUnits: 'fraction',
+                        anchorYUnits: 'fraction',
+                        rotation: rotation,
+                        rotateWithView: true,
+                    }),
+                });
+            },
+        });
+
+        function createAirplaneIcon(altitude, speed) {
+            // Color based on altitude: higher = darker blue
+            let r = 0, g = 0, b = 0;
+            if (altitude > 0) {
+                // Scale from light blue (low) to dark blue (high)
+                const altFactor = Math.min(altitude / 40000, 1); // Max at 40k feet
+                r = Math.floor(50 + altFactor * 100);
+                g = Math.floor(100 + altFactor * 50);
+                b = Math.floor(200 + altFactor * 55);
+            } else {
+                r = 100; g = 100; b = 100; // Gray for unknown altitude
+            }
+            
+            // Airplane SVG icon pointing east (right) by default
+            // This matches OpenLayers' default orientation (rotation 0 = east)
+            // Rotate -90° clockwise from north to point east
+            const svgAirplane = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="24" width="24">
+                    <g transform="rotate(-90 12 12)">
+                        <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" 
+                              style="fill: rgb(${r}, ${g}, ${b}); stroke: rgb(0, 0, 0); stroke-width: 0.5;"/>
+                    </g>
+                </svg>
+            `;
+            
+            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgAirplane);
+        }
+
+        let aircraftData = {}; // Store aircraft by hex code for tracking
+        let aircraftUpdateInProgress = false; // Track if update is in progress
+
+        async function updateAircraft() {
+            // Don't start a new request if one is already in progress
+            if (aircraftUpdateInProgress) {
+                return;
+            }
+            
+            aircraftUpdateInProgress = true;
+            let timeoutId = null;
+            
+            try {
+                // Add timeout to fetch request (8 seconds - shorter than polling interval)
+                const controller = new AbortController();
+                timeoutId = setTimeout(() => {
+                    controller.abort();
+                }, 8000);
+                
+                const response = await fetch('/aircraft.json', {
+                    signal: controller.signal,
+                    cache: 'no-cache',
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data || !data.aircraft) {
+                    return;
+                }
+                
+                // Remove old aircraft features
+                const existingFeatures = aircraftSource.getFeatures();
+                const existingHexes = new Set(existingFeatures.map(f => f.get('hex')));
+                const currentHexes = new Set(data.aircraft.map(a => a.hex));
+                
+                // Remove aircraft that are no longer in the data
+                existingFeatures.forEach(feature => {
+                    const hex = feature.get('hex');
+                    if (!currentHexes.has(hex)) {
+                        aircraftSource.removeFeature(feature);
+                        delete aircraftData[hex];
+                    }
+                });
+                
+                // Update or add aircraft
+                data.aircraft.forEach(aircraft => {
+                    if (!aircraft.lat || !aircraft.lon) {
+                        return; // Skip aircraft without position
+                    }
+                    
+                    const hex = aircraft.hex;
+                    const coordinates = ol.proj.fromLonLat([aircraft.lon, aircraft.lat]);
+                    
+                    let feature = aircraftData[hex];
+                    
+                    if (!feature) {
+                        // Create new feature
+                        feature = new ol.Feature({
+                            geometry: new ol.geom.Point(coordinates),
+                            hex: hex,
+                            type: 'aircraft',
+                        });
+                        aircraftSource.addFeature(feature);
+                        aircraftData[hex] = feature;
+                    } else {
+                        // Update existing feature position
+                        feature.getGeometry().setCoordinates(coordinates);
+                    }
+                    
+                    // Update all aircraft properties
+                    feature.set('lat', aircraft.lat);
+                    feature.set('lon', aircraft.lon);
+                    feature.set('alt_baro', aircraft.alt_baro || 0);
+                    feature.set('gs', aircraft.gs || 0);
+                    // Track can be null/undefined, so handle it properly
+                    feature.set('track', aircraft.track !== null && aircraft.track !== undefined ? aircraft.track : null);
+                    feature.set('flight', aircraft.flight || hex);
+                    feature.set('squawk', aircraft.squawk || '');
+                    feature.set('category', aircraft.category || '');
+                    feature.set('messages', aircraft.messages || 0);
+                    feature.set('seen', aircraft.seen || 0);
+                    
+                    // Force style recalculation by changing a property
+                    feature.changed();
+                    
+                    // Create label for popup
+                    const flight = aircraft.flight ? aircraft.flight.trim() : hex;
+                    const alt = aircraft.alt_baro ? `${Math.round(aircraft.alt_baro)} ft` : 'Unknown';
+                    const speed = aircraft.gs ? `${Math.round(aircraft.gs)} kts` : 'Unknown';
+                    const heading = aircraft.track ? `${Math.round(aircraft.track)}°` : 'Unknown';
+                    feature.set('label', `${flight}\nAlt: ${alt}\nSpeed: ${speed}\nHeading: ${heading}`);
+                });
+            } catch (error) {
+                // Only log if it's not an abort error (which is expected when timing out)
+                if (error.name !== 'AbortError') {
+                    console.error('Error fetching aircraft data:', error);
+                }
+                // Silently fail - empty aircraft data is acceptable
+            } finally {
+                // Clear timeout if still pending
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+                // Mark update as complete
+                aircraftUpdateInProgress = false;
+            }
+        }
+
         const map = new ol.Map({
             target: 'map',
             controls: ol.control.defaults.defaults({
@@ -1545,6 +1730,7 @@
                 }),
                 vectorLayer,
                 vectorTrackLayer,
+                aircraftLayer,
             ],
             view: new ol.View({
                 center: ol.proj.fromLonLat([-110.7919148, 38.4065268]),
@@ -1589,8 +1775,24 @@
             if (feature) {
                 const name = feature.get("name");
                 const metadata = feature.get("metadata");
+                const type = feature.get("type");
 
-                if(name) {
+                if (type === 'aircraft') {
+                    // Show aircraft info
+                    info.style.left = event.pixel[0] + 'px';
+                    info.style.top = event.pixel[1] + 'px';
+                    info.style.visibility = 'visible';
+                    const flight = feature.get('flight') || feature.get('hex');
+                    const alt = feature.get('alt_baro') ? `${Math.round(feature.get('alt_baro'))} ft` : 'Unknown';
+                    const speed = feature.get('gs') ? `${Math.round(feature.get('gs'))} kts` : 'Unknown';
+                    const heading = feature.get('track') ? `${Math.round(feature.get('track'))}°` : 'Unknown';
+                    const squawk = feature.get('squawk') || '';
+                    let infoText = `${flight}\nAlt: ${alt}\nSpeed: ${speed}\nHeading: ${heading}`;
+                    if (squawk) {
+                        infoText += `\nSquawk: ${squawk}`;
+                    }
+                    info.innerText = infoText;
+                } else if(name) {
                     // activate commonpanel
                     populatePath(name);
                     // zoomToMarker(name);
@@ -1663,19 +1865,36 @@
             const lon = geo[0].toFixed(7)
             geo_el.innerHTML = `${lat},${lon}`;
 
-            if(feature && !feature.get("name") && feature.get("label")) {
-                info.style.left = event.pixel[0] + 'px';
-                info.style.top = event.pixel[1] + 'px';
-                info.style.visibility = 'visible';
-                info.innerText = feature.get("label");
+            if(feature) {
+                const type = feature.get("type");
+                if (type === 'aircraft') {
+                    // Show aircraft info on hover
+                    const flight = feature.get('flight') || feature.get('hex');
+                    const alt = feature.get('alt_baro') ? `${Math.round(feature.get('alt_baro'))} ft` : 'Unknown';
+                    const speed = feature.get('gs') ? `${Math.round(feature.get('gs'))} kts` : 'Unknown';
+                    const heading = feature.get('track') ? `${Math.round(feature.get('track'))}°` : 'Unknown';
+                    info.style.left = event.pixel[0] + 'px';
+                    info.style.top = event.pixel[1] + 'px';
+                    info.style.visibility = 'visible';
+                    info.innerText = `${flight}\nAlt: ${alt}\nSpeed: ${speed}\nHeading: ${heading}`;
+                } else if (!feature.get("name") && feature.get("label")) {
+                    info.style.left = event.pixel[0] + 'px';
+                    info.style.top = event.pixel[1] + 'px';
+                    info.style.visibility = 'visible';
+                    info.innerText = feature.get("label");
+                } else {
+                    info.style.visibility = 'hidden';
+                }
             } else {
                 info.style.visibility = 'hidden';
             }
         });
 
         setInterval(updateGeoJSON, 9000);
+        setInterval(updateAircraft, 10000); // Update aircraft every 10 seconds
 
         updateGeoJSON();
+        updateAircraft();
         loadCampuses();
 
         function closeOverlay() {

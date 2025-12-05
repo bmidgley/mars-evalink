@@ -33,5 +33,8 @@ urlpatterns = [
     path('campuses.json', views.campuses, name='campuses'),
     path('add-location-to-plan', views.add_location_to_plan, name='add_location_to_plan'),
     path('delete-planner-point', views.delete_planner_point, name='delete_planner_point'),
-    path('eva-statistics/', views.eva_statistics, name='eva_statistics')
+    path('eva-statistics/', views.eva_statistics, name='eva_statistics'),
+    path('oldest-consecutive-inside', views.oldest_consecutive_inside, name='oldest_consecutive_inside'),
+    path('clear-redundant-logs', views.clear_redundant_logs, name='clear_redundant_logs'),
+    path('aircraft.json', views.aircraft, name='aircraft')
 ]

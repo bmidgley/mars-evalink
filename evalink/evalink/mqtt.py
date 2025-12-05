@@ -10,11 +10,25 @@ from django.conf import settings
 
 def on_connect(client, _userdata, _flags, _rc):
     client.subscribe(f'{os.getenv("MQTT_TOPIC")}/+/json/#')
+    client.subscribe('adsb/aircraft/+')
 
 def on_disconnect(client, _userdata, _rc):
     pass #print("on_disconnect?")
 
 def on_message(_client, _userdata, msg):
+    # Handle ADSB aircraft messages
+    if msg.topic.startswith('adsb/aircraft/'):
+        try:
+            hex_code = msg.topic.split('/')[-1]
+            message = json.loads(msg.payload)
+            handler.process_adsb_aircraft(hex_code, message)
+        except Exception as error:
+            print(f'handler failed to process ADSB aircraft {msg.topic}: {error} {traceback.print_tb(error.__traceback__)}')
+            db.close_old_connections()
+            time.sleep(1)
+        return
+    
+    # Handle regular messages
     message = json.loads(msg.payload)
     if not verify(message, 'type'): return
     if not verify(message, 'payload'): return
