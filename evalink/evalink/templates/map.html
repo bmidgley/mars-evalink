@@ -1605,6 +1605,15 @@
         let aircraftData = {}; // Store aircraft by hex code for tracking
         let aircraftUpdateInProgress = false; // Track if update is in progress
 
+        function calculateAge(updatedAt) {
+            if (!updatedAt) return 'Unknown';
+            const updated = new Date(updatedAt);
+            const now = new Date();
+            const diffMs = now - updated;
+            const diffMinutes = Math.floor(diffMs / 60000);
+            return `${diffMinutes}m`;
+        }
+
         async function updateAircraft() {
             // Don't start a new request if one is already in progress
             if (aircraftUpdateInProgress) {
@@ -1692,6 +1701,7 @@
                     feature.set('category', aircraft.category || '');
                     feature.set('messages', aircraft.messages || 0);
                     feature.set('seen', aircraft.seen || 0);
+                    feature.set('updated_at', aircraft.updated_at || null);
                     
                     // Force style recalculation by changing a property
                     feature.changed();
@@ -1701,7 +1711,8 @@
                     const alt = aircraft.alt_baro ? `${Math.round(aircraft.alt_baro)} ft` : 'Unknown';
                     const speed = aircraft.gs ? `${Math.round(aircraft.gs)} kts` : 'Unknown';
                     const heading = aircraft.track ? `${Math.round(aircraft.track)}°` : 'Unknown';
-                    feature.set('label', `${flight}\nAlt: ${alt}\nSpeed: ${speed}\nHeading: ${heading}`);
+                    const age = calculateAge(aircraft.updated_at);
+                    feature.set('label', `${flight}\nAlt: ${alt}\nSpeed: ${speed}\nHeading: ${heading}\nAge: ${age}`);
                 });
             } catch (error) {
                 // Only log if it's not an abort error (which is expected when timing out)
@@ -1786,8 +1797,9 @@
                     const alt = feature.get('alt_baro') ? `${Math.round(feature.get('alt_baro'))} ft` : 'Unknown';
                     const speed = feature.get('gs') ? `${Math.round(feature.get('gs'))} kts` : 'Unknown';
                     const heading = feature.get('track') ? `${Math.round(feature.get('track'))}°` : 'Unknown';
+                    const age = calculateAge(feature.get('updated_at'));
                     const squawk = feature.get('squawk') || '';
-                    let infoText = `${flight}\nAlt: ${alt}\nSpeed: ${speed}\nHeading: ${heading}`;
+                    let infoText = `${flight}\nAlt: ${alt}\nSpeed: ${speed}\nHeading: ${heading}\nAge: ${age}`;
                     if (squawk) {
                         infoText += `\nSquawk: ${squawk}`;
                     }
@@ -1873,10 +1885,11 @@
                     const alt = feature.get('alt_baro') ? `${Math.round(feature.get('alt_baro'))} ft` : 'Unknown';
                     const speed = feature.get('gs') ? `${Math.round(feature.get('gs'))} kts` : 'Unknown';
                     const heading = feature.get('track') ? `${Math.round(feature.get('track'))}°` : 'Unknown';
+                    const age = calculateAge(feature.get('updated_at'));
                     info.style.left = event.pixel[0] + 'px';
                     info.style.top = event.pixel[1] + 'px';
                     info.style.visibility = 'visible';
-                    info.innerText = `${flight}\nAlt: ${alt}\nSpeed: ${speed}\nHeading: ${heading}`;
+                    info.innerText = `${flight}\nAlt: ${alt}\nSpeed: ${speed}\nHeading: ${heading}\nAge: ${age}`;
                 } else if (!feature.get("name") && feature.get("label")) {
                     info.style.left = event.pixel[0] + 'px';
                     info.style.top = event.pixel[1] + 'px';

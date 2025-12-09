@@ -201,7 +201,7 @@ def process_adsb_aircraft(hex_code, message):
     
     # Skip if no position data
     if lat is None or lon is None:
-        print(f'skipping aircraft {hex_code} because it has no position data')
+        # print(f'skipping aircraft {hex_code} because it has no position data')
         return
     
     # Check all campuses to see if aircraft is within outer geofence

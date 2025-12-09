@@ -876,6 +876,7 @@ def aircraft(request):
             'category': features.get('category'),
             'messages': features.get('messages'),
             'seen': features.get('seen'),
+            'updated_at': aircraft.updated_at.isoformat() if aircraft.updated_at else None,
         }
         
         aircraft_data.append(aircraft_obj)
