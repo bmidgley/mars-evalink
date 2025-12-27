@@ -376,7 +376,7 @@ def create_heard_messages(text, message_id, current_time):
     if inner_fence:
         outside_stations = Station.objects.filter(
             last_position__isnull=False
-        ).exclude(hardware_number=int(os.getenv('MQTT_NODE_NUMBER')))  # Exclude the gateway station
+        ).exclude(hardware_number=int(os.getenv('MQTT_NODE_NUMBER'))).exclude(station_type='infrastructure')  # Exclude the gateway station and infrastructure stations
 
         for outside_station in outside_stations:
             if outside_station.outside(inner_fence):
