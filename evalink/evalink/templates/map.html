@@ -221,28 +221,6 @@
             padding: 20px;
         }
 
-        #message-tab {
-            position: absolute;
-            width: 200px;
-            bottom: 40px;
-            left: 10px;
-            background-color: #fff;
-            z-index: 1001;
-            border-radius: 5px;
-            padding: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-            transition: left 0.3s ease;
-        }
-
-        #message-tab.collapsed {
-            left: -168px;
-        }
-
-        #message-tab.collapsed .message-content {
-            opacity: 0;
-            pointer-events: none;
-        }
-
         .message-content {
             transition: opacity 0.3s ease;
         }
@@ -293,15 +271,37 @@
             font-family: 'Roboto', sans-serif;
             width: 250px;
             transition: left 0.3s ease;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
         }
 
         #search-panel.collapsed {
             left: -218px;
         }
 
-        #search-panel.collapsed .search-content {
+        #search-panel.collapsed .drawer-content {
             opacity: 0;
             pointer-events: none;
+        }
+
+        .drawer-content {
+            transition: opacity 0.3s ease;
+        }
+
+        .drawer-section {
+            margin-bottom: 20px;
+        }
+
+        .drawer-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .drawer-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            font-family: 'Roboto', sans-serif;
         }
 
         .drawer-toggle {
@@ -314,7 +314,7 @@
             margin-bottom: 10px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-end;
             width: 100%;
         }
 
@@ -322,9 +322,6 @@
             color: #333;
         }
 
-        .search-content {
-            transition: opacity 0.3s ease;
-        }
 
         #campus-panel h4 {
             margin: 0 0 10px 0;
@@ -423,11 +420,10 @@
             100% { transform: rotate(360deg); }
         }
 
-        #message-tab form {
+        #search-panel form {
             display: flex;
             flex-direction: column;
             padding:0px;
-        
         }
         form input {
             margin: 3px;
@@ -706,20 +702,6 @@
         <p id="time-slider-coordinates">0,0</p>
     </div>
 
-    <div id="message-tab" class="hidden">
-        <button class="drawer-toggle" onclick="toggleMessagePanel()">
-            <span>Messages</span>
-            <span id="message-toggle-icon">◀</span>
-        </button>
-        <div class="message-content">
-            <ul id="message-list"></ul>
-            <form class="form" method="post" id="message-post">
-                <input type="text" name="message" class="form-control" id="form-control" placeholder="Message ..." required>
-                
-                <input type="submit" value="Send Message">
-            </form>
-        </div>
-    </div>
 
     <div id="geo-tab">
         <p id="geo-coordinates"></p>
@@ -735,24 +717,36 @@
         </select>
     </div>
 
-    <div id="search-panel">
+    <div id="search-panel" class="collapsed">
         <button class="drawer-toggle" onclick="toggleSearchPanel()">
-            <span>Search Tracks</span>
-            <span id="search-toggle-icon">◀</span>
+            <span id="search-toggle-icon">▶</span>
         </button>
-        <div class="search-content">
-            <div class="search-controls">
-                <input type="text" id="date-input" placeholder="2025-12-25" title="Constrains search results to this day or starting on this day if the end date is also present. YYYY-MM-DD format.">
-                <input type="text" id="endDate" placeholder="2025-12-31" title="Constrains search results to end by this date. Start date above must be present. YYYY-MM-DD format.">
-                <button type="button" onclick="populateHistory()" title="Searches the currently visible part of the map for logged tracks">
-                    Search area...
-                </button>
+        <div class="drawer-content">
+            <div class="drawer-section">
+                <div class="drawer-section-title">Search</div>
+                <div class="search-controls">
+                    <input type="text" id="date-input" placeholder="2025-12-25" title="Constrains search results to this day or starting on this day if the end date is also present. YYYY-MM-DD format.">
+                    <input type="text" id="endDate" placeholder="2025-12-31" title="Constrains search results to end by this date. Start date above must be present. YYYY-MM-DD format.">
+                    <button type="button" onclick="populateHistory()" title="Searches the currently visible part of the map for logged tracks">
+                        Search area...
+                    </button>
+                </div>
+                <div class="search-spinner" id="searchSpinner">
+                    <div class="spinner"></div>
+                </div>
+                <select id="historyDropdown" onChange="populateUrlPath(this.options[this.selectedIndex].value);">
+                </select>
             </div>
-            <div class="search-spinner" id="searchSpinner">
-                <div class="spinner"></div>
+            <div class="drawer-section">
+                <div class="drawer-section-title">Messages</div>
+                <div class="message-content">
+                    <ul id="message-list"></ul>
+                    <form class="form" method="post" id="message-post">
+                        <input type="text" name="message" class="form-control" id="form-control" placeholder="Message ..." required>
+                        <input type="submit" value="Send Message">
+                    </form>
+                </div>
             </div>
-            <select id="historyDropdown" onChange="populateUrlPath(this.options[this.selectedIndex].value);">
-            </select>
         </div>
     </div>
 
@@ -2491,23 +2485,10 @@
             }
         });
 
-        // Drawer toggle functions
+        // Drawer toggle function
         function toggleSearchPanel() {
             const panel = document.getElementById('search-panel');
             const icon = document.getElementById('search-toggle-icon');
-            
-            if (panel.classList.contains('collapsed')) {
-                panel.classList.remove('collapsed');
-                icon.textContent = '◀';
-            } else {
-                panel.classList.add('collapsed');
-                icon.textContent = '▶';
-            }
-        }
-
-        function toggleMessagePanel() {
-            const panel = document.getElementById('message-tab');
-            const icon = document.getElementById('message-toggle-icon');
             
             if (panel.classList.contains('collapsed')) {
                 panel.classList.remove('collapsed');
