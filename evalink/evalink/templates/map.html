@@ -261,7 +261,7 @@
 
         #search-panel {
             position: absolute;
-            top: 120px;
+            top: 50px;
             left: 10px;
             background-color: white;
             padding: 15px;
@@ -271,8 +271,10 @@
             font-family: 'Roboto', sans-serif;
             width: 250px;
             transition: left 0.3s ease;
-            max-height: calc(100vh - 140px);
-            overflow-y: auto;
+            max-height: calc(100vh - 110px);
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
         }
 
         #search-panel.collapsed {
@@ -286,6 +288,10 @@
 
         .drawer-content {
             transition: opacity 0.3s ease;
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex: 1;
+            min-height: 0;
         }
 
         .drawer-section {
@@ -711,24 +717,23 @@
         <i class="bi bi-layers"></i>
     </button>
 
-    <div id="campus-panel">
-        <select id="campusDropdown" onChange="centerMapOnCampus(this.options[this.selectedIndex].value);">
-            <option value="">Loading campuses...</option>
-        </select>
-    </div>
-
     <div id="search-panel" class="collapsed">
         <button class="drawer-toggle" onclick="toggleSearchPanel()">
             <span id="search-toggle-icon">▶</span>
         </button>
         <div class="drawer-content">
             <div class="drawer-section">
+                <select id="campusDropdown" onChange="centerMapOnCampus(this.options[this.selectedIndex].value);">
+                    <option value="">Loading campuses...</option>
+                </select>
+            </div>
+            <div class="drawer-section">
                 <div class="drawer-section-title">Search</div>
                 <div class="search-controls">
                     <input type="text" id="date-input" placeholder="2025-12-25" title="Constrains search results to this day or starting on this day if the end date is also present. YYYY-MM-DD format.">
                     <input type="text" id="endDate" placeholder="2025-12-31" title="Constrains search results to end by this date. Start date above must be present. YYYY-MM-DD format.">
                     <button type="button" onclick="populateHistory()" title="Searches the currently visible part of the map for logged tracks">
-                        Search area...
+                        Search visible area...
                     </button>
                 </div>
                 <div class="search-spinner" id="searchSpinner">
@@ -910,7 +915,7 @@
                 // Add default option
                 const defaultOption = document.createElement('option');
                 defaultOption.value = '';
-                defaultOption.text = 'Select a campus...';
+                defaultOption.text = 'Zoom to campus...';
                 dropdown.appendChild(defaultOption);
                 
                 // Add campus options
@@ -946,8 +951,8 @@
             // Center the map on the campus coordinates
             map.getView().setCenter(coordinates);
             
-            // Set zoom level four levels closer than original (was 12, now 16)
-            map.getView().setZoom(15);
+            // Set campus zoom level to 14
+            map.getView().setZoom(14);
         }
 
         async function populateHistory() {
