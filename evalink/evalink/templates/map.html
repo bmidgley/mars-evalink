@@ -1039,16 +1039,19 @@
             const messages = await response.json();
             const message_list_el = document.getElementById("message-list");
             message_list_el.innerHTML = "";
+            if (!Array.isArray(messages)) return;
             for(const message of messages) {
-                if(message["station_type"] == "ignore") continue;
+                const position = message["position"];
+                const hasPosition = Array.isArray(position) && position.length >= 2 && position[0] != null && position[1] != null;
+                const name = message.station != null ? String(message.station) : "";
+                const text = message.text != null ? String(message.text) : "";
                 const li = document.createElement("li");
                 const markerItem = document.createElement("div");
                 const markerText = document.createElement("div");
-                const name = message.station;
                 if(markerData[name]) {
-                    markerItem.innerHTML = message.station + "⌖";
+                    markerItem.innerHTML = name + "⌖";
                 } else {
-                    markerItem.innerHTML = message.station;
+                    markerItem.innerHTML = name;
                 }
                 markerItem.className = "marker-list";
                 markerItem.addEventListener('click', function () {
@@ -1059,24 +1062,24 @@
                         populateCrewDropdown(name);
                     }
                 });
-                if(message["position"][0] != null) {
+                if(hasPosition) {
                     markerText.addEventListener('click', function () {
-                        const coordinates = ol.proj.fromLonLat([message["position"][1], message["position"][0]])
+                        const coordinates = ol.proj.fromLonLat([position[1], position[0]]);
                         map.getView().animate({
                             center: coordinates,
                             zoom: 17,
                             duration: 1000,
                         });
-                    })
-                    markerText.innerHTML = message.text + "⌖";
+                    });
+                    markerText.innerHTML = text + "⌖";
                 } else {
-                    markerText.innerHTML = message.text;
+                    markerText.innerHTML = text;
                 }
                 li.appendChild(markerItem);
                 li.appendChild(markerText);
                 message_list_el.appendChild(li);
                 if(window.seenTextId < message.id) {
-                    const content = message.station + ': ' + message.text;
+                    const content = name + ': ' + text;
                     if (Notification.permission === "granted") {
                         if(!firstRun) { new Notification(content) }
                     } else if (Notification.permission !== "denied") {
