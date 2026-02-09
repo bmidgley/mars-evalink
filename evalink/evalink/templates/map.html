@@ -1776,11 +1776,78 @@
         });
         map.addOverlay(overlay);
 
+        // Debounce mechanism to prevent duplicate handling from click + singleclick
+        let lastInteractionTime = 0;
+        let lastInteractionPixel = null;
+        let isProcessingStationClick = false;
+        const INTERACTION_DEBOUNCE_MS = 100;
+        const PIXEL_TOLERANCE = 5;
+
         // Handle both click and touch events for better mobile support
         function handleMapInteraction(event) {
-            const feature = map.forEachFeatureAtPixel(event.pixel, function (feature) {
+            const now = Date.now();
+            const pixel = event.pixel;
+            
+            // Debounce: ignore if this is a duplicate call within the debounce window
+            // and the pixel is very close to the last one
+            if (now - lastInteractionTime < INTERACTION_DEBOUNCE_MS && lastInteractionPixel) {
+                const pixelDiff = Math.abs(pixel[0] - lastInteractionPixel[0]) + 
+                                 Math.abs(pixel[1] - lastInteractionPixel[1]);
+                if (pixelDiff < PIXEL_TOLERANCE) {
+                    return; // Duplicate call, ignore
+                }
+            }
+            
+            lastInteractionTime = now;
+            lastInteractionPixel = pixel;
+            
+            // If we're currently processing a station click, don't show location popup
+            if (isProcessingStationClick) {
+                return;
+            }
+
+            // Check if click is on overlay element (station details popup)
+            const overlayElement = overlay.getElement();
+            if (overlayElement && event.originalEvent && event.originalEvent.target) {
+                if (overlayElement.contains(event.originalEvent.target)) {
+                    // Clicked on overlay content - don't show location popup
+                    return;
+                }
+            }
+
+            // Check if overlay is positioned (indicates a station was just clicked)
+            const overlayPosition = overlay.getPosition();
+            if (overlayPosition) {
+                // Overlay is visible, likely from a station click - don't show location popup
+                // But still allow feature detection to work for other interactions
+            }
+
+            // Try to find feature at pixel - check multiple layers
+            let feature = null;
+            
+            // First try the standard method
+            feature = map.forEachFeatureAtPixel(event.pixel, function (feature) {
                 return feature;
             });
+            
+            // If no feature found, try checking a slightly larger area (helps with edge cases)
+            if (!feature) {
+                const tolerance = 3;
+                for (let dx = -tolerance; dx <= tolerance && !feature; dx++) {
+                    for (let dy = -tolerance; dy <= tolerance && !feature; dy++) {
+                        const testPixel = [event.pixel[0] + dx, event.pixel[1] + dy];
+                        feature = map.forEachFeatureAtPixel(testPixel, function (f) {
+                            // Only return features with names (stations) or specific types
+                            if (f.get("name") || f.get("type") === 'aircraft' || 
+                                (f.get("metadata") && f.get("metadata").isPlannerFlag)) {
+                                return f;
+                            }
+                            return null;
+                        });
+                        if (feature) break;
+                    }
+                }
+            }
 
             if (feature) {
                 const name = feature.get("name");
@@ -1803,24 +1870,46 @@
                         infoText += `\nSquawk: ${squawk}`;
                     }
                     info.innerText = infoText;
+                    return; // Don't show location popup for aircraft
                 } else if(name) {
-                    // activate commonpanel
-                    populatePath(name);
+                    // Station clicked - activate commonpanel but don't show location popup
+                    isProcessingStationClick = true;
+                    // Set a timeout fallback to reset the flag (in case promise never resolves)
+                    setTimeout(() => {
+                        isProcessingStationClick = false;
+                    }, 2000);
+                    populatePath(name).then(() => {
+                        // Reset flag after a short delay to allow overlay to be positioned
+                        setTimeout(() => {
+                            isProcessingStationClick = false;
+                        }, 500);
+                    }).catch(() => {
+                        isProcessingStationClick = false;
+                    });
                     // zoomToMarker(name);
                     populateCrewDropdown(name);
+                    return; // Don't show location popup for stations
                 } else if (metadata && metadata.isPlannerFlag) {
                     // This is a planner flag - show delete confirmation dialog
                     showDeleteConfirmationDialog(metadata);
+                    return; // Don't show location popup for planner flags
                 } else {
                     info.style.left = event.pixel[0] + 'px';
                     info.style.top = event.pixel[1] + 'px';
                     info.style.visibility = 'visible';
                     info.innerText = feature.get("label");
+                    return; // Don't show location popup for other features
                 }
             } else {
-                // Clicked on empty area - show location popup
-                const coordinates = ol.proj.toLonLat(event.coordinate);
-                showLocationPopup(coordinates[1], coordinates[0]);
+                // Only show location popup if:
+                // 1. Overlay is not positioned (no station was just clicked)
+                // 2. We're not currently processing a station click
+                // 3. No station is currently selected (window.current_name not set or was just set)
+                if (!overlayPosition && !isProcessingStationClick) {
+                    // Clicked on empty area - show location popup
+                    const coordinates = ol.proj.toLonLat(event.coordinate);
+                    showLocationPopup(coordinates[1], coordinates[0]);
+                }
             }
         }
 
