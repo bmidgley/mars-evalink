@@ -16,6 +16,8 @@ import zoneinfo
 from . import handler
 import math
 from collections import defaultdict
+from urllib.request import Request, urlopen
+from urllib.error import URLError, HTTPError
 
 load_dotenv()
 
@@ -887,6 +889,131 @@ def aircraft(request):
         'now': int(timezone.now().timestamp()),
         'aircraft': aircraft_data
     }, json_dumps_params={'indent': 2})
+
+
+@login_required
+def aprs(request):
+    """Fetch APRS stations from aprs.fi within the campus outer geofence and return as GeoJSON FeatureCollection like features.json."""
+    campus = Campus.objects.get(name=os.getenv('CAMPUS'))
+    outer_fence = campus.outer_geofence
+    if not outer_fence:
+        return JsonResponse({
+            'type': 'FeatureCollection',
+            'features': [],
+            'error': 'No outer geofence configured for this campus',
+        }, json_dumps_params={'indent': 2})
+
+    minlat = min(outer_fence.latitude1, outer_fence.latitude2)
+    maxlat = max(outer_fence.latitude1, outer_fence.latitude2)
+    minlng = min(outer_fence.longitude1, outer_fence.longitude2)
+    maxlng = max(outer_fence.longitude1, outer_fence.longitude2)
+
+    api_key = os.getenv('APRS_FI_API_KEY', '')
+    if not api_key:
+        return JsonResponse({
+            'type': 'FeatureCollection',
+            'features': [],
+            'error': 'APRS_FI_API_KEY not configured',
+        }, json_dumps_params={'indent': 2})
+
+    url = (
+        'https://api.aprs.fi/api/get?'
+        'what=loc&'
+        'apikey={apikey}&'
+        'minlat={minlat}&maxlat={maxlat}&minlng={minlng}&maxlng={maxlng}&'
+        'format=json'
+    ).format(
+        apikey=api_key,
+        minlat=minlat,
+        maxlat=maxlat,
+        minlng=minlng,
+        maxlng=maxlng,
+    )
+
+    req = Request(
+        url,
+        headers={
+            'User-Agent': 'evalink/1.0 (+https://github.com/mars-society/evalink)',
+        },
+    )
+    try:
+        with urlopen(req, timeout=10) as resp:
+            raw = resp.read().decode()
+    except (URLError, HTTPError, OSError) as e:
+        return JsonResponse({
+            'type': 'FeatureCollection',
+            'features': [],
+            'error': str(e),
+        }, json_dumps_params={'indent': 2})
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        return JsonResponse({
+            'type': 'FeatureCollection',
+            'features': [],
+            'error': 'Invalid JSON from aprs.fi: ' + str(e),
+        }, json_dumps_params={'indent': 2})
+
+    if data.get('result') != 'ok':
+        return JsonResponse({
+            'type': 'FeatureCollection',
+            'features': [],
+            'error': data.get('description', 'aprs.fi request failed'),
+        }, json_dumps_params={'indent': 2})
+
+    entries = data.get('entries', [])
+    features = []
+    for entry in entries:
+        try:
+            lat = float(entry.get('lat', 0))
+            lng = float(entry.get('lng', 0))
+        except (TypeError, ValueError):
+            continue
+        name = entry.get('name', '') or entry.get('srccall', '')
+        lasttime = entry.get('lasttime')
+        if lasttime is not None:
+            try:
+                dt = datetime.fromtimestamp(int(lasttime), tz=timezone.utc)
+                time_str = dt.isoformat()
+            except (TypeError, ValueError, OSError):
+                time_str = None
+        else:
+            time_str = None
+        altitude = entry.get('altitude')
+        if altitude is not None:
+            try:
+                altitude = float(altitude)
+            except (TypeError, ValueError):
+                altitude = None
+        prop = {
+            'name': name,
+            'label': name,
+            'time': time_str,
+            'altitude': altitude,
+            'comment': entry.get('comment'),
+            'symbol': entry.get('symbol'),
+            'srccall': entry.get('srccall'),
+            'dstcall': entry.get('dstcall'),
+            'path': entry.get('path'),
+            'course': entry.get('course'),
+            'speed': entry.get('speed'),
+        }
+        feat = {
+            'type': 'Feature',
+            'geometry': {
+                'type': 'Point',
+                'coordinates': [lng, lat],
+            },
+            'properties': prop,
+        }
+        features.append(feat)
+
+    return JsonResponse({
+        'type': 'FeatureCollection',
+        'features': features,
+    }, json_dumps_params={'indent': 2})
+
 
 @login_required
 def oldest_consecutive_inside(request):

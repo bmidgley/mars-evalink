@@ -36,5 +36,6 @@ urlpatterns = [
     path('eva-statistics/', views.eva_statistics, name='eva_statistics'),
     path('oldest-consecutive-inside', views.oldest_consecutive_inside, name='oldest_consecutive_inside'),
     path('clear-redundant-logs', views.clear_redundant_logs, name='clear_redundant_logs'),
-    path('aircraft.json', views.aircraft, name='aircraft')
+    path('aircraft.json', views.aircraft, name='aircraft'),
+    path('aprs.json', views.aprs, name='aprs'),
 ]
