@@ -366,20 +366,21 @@ def localdate(label, my_date, default):
     return my_aware_datetime
 
 def create_heard_messages(text, message_id, current_time):
-    """Create 'heard' TextLog entries for stations outside campus inner geofence"""
+    """Create 'heard' TextLog entries for stations outside campus inner geofence but inside outer geofence"""
     from django.db import IntegrityError
     
     campus = Campus.objects.get(name=os.getenv('CAMPUS'))
     inner_fence = campus.inner_geofence
+    outer_fence = campus.outer_geofence
     tz = pytz.timezone(campus.time_zone)
     
     if inner_fence:
         outside_stations = Station.objects.filter(
             last_position__isnull=False
-        ).exclude(hardware_number=int(os.getenv('MQTT_NODE_NUMBER'))).exclude(station_type='infrastructure')  # Exclude the gateway station and infrastructure stations
+        ).exclude(hardware_number=int(os.getenv('MQTT_NODE_NUMBER'))).exclude(station_type='infrastructure').exclude(station_type='ignore')  # Exclude the gateway station, infrastructure, and ignore stations
 
         for outside_station in outside_stations:
-            if outside_station.outside(inner_fence):
+            if outside_station.outside(inner_fence) and (not outer_fence or not outside_station.outside(outer_fence)):
                 heard_text = f"heard: {text}"
                 heard_log = TextLog(
                     station=outside_station,
