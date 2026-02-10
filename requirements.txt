@@ -1,3 +1,4 @@
+aprslib==0.7.2
 asgiref==3.7.2
 Django==4.2.16
 django-cors-headers==4.3.1

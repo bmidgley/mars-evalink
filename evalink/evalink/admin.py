@@ -52,6 +52,11 @@ class GeofenceAdmin(admin.ModelAdmin):
 class AircraftAdmin(admin.ModelAdmin):
     list_display = [f.name for f in Aircraft._meta.fields]
 
+class APRSPositionAdmin(admin.ModelAdmin):
+    list_display = [f.name for f in APRSPosition._meta.fields]
+    list_filter = ('updated_at',)
+    search_fields = ('callsign', 'comment')
+
 admin.site.register(Hardware, HardwareAdmin)
 admin.site.register(Station, StationAdmin)
 admin.site.register(StationProfile, StationProfileAdmin)
@@ -70,3 +75,4 @@ admin.site.register(EvaVehicle, EvaVehicleAdmin)
 admin.site.register(EvaStation, EvaStationAdmin)
 admin.site.register(Geofence, GeofenceAdmin)
 admin.site.register(Aircraft, AircraftAdmin)
+admin.site.register(APRSPosition, APRSPositionAdmin)

@@ -16,8 +16,11 @@ import zoneinfo
 from . import handler
 import math
 from collections import defaultdict
-from urllib.request import Request, urlopen
-from urllib.error import URLError, HTTPError
+import socket
+import threading
+import time
+
+import aprslib
 
 load_dotenv()
 
@@ -893,7 +896,7 @@ def aircraft(request):
 
 @login_required
 def aprs(request):
-    """Fetch APRS stations from aprs.fi within the campus outer geofence and return as GeoJSON FeatureCollection like features.json."""
+    """Return APRS stations in the campus outer geofence. Serves from cache (run_aprs_feed); use ?live=1 for a one-off 12s live collection."""
     campus = Campus.objects.get(name=os.getenv('CAMPUS'))
     outer_fence = campus.outer_geofence
     if not outer_fence:
@@ -903,107 +906,171 @@ def aprs(request):
             'error': 'No outer geofence configured for this campus',
         }, json_dumps_params={'indent': 2})
 
-    minlat = min(outer_fence.latitude1, outer_fence.latitude2)
-    maxlat = max(outer_fence.latitude1, outer_fence.latitude2)
-    minlng = min(outer_fence.longitude1, outer_fence.longitude2)
-    maxlng = max(outer_fence.longitude1, outer_fence.longitude2)
+    lat_n = max(outer_fence.latitude1, outer_fence.latitude2)
+    lat_s = min(outer_fence.latitude1, outer_fence.latitude2)
+    lon_w = min(outer_fence.longitude1, outer_fence.longitude2)
+    lon_e = max(outer_fence.longitude1, outer_fence.longitude2)
 
-    api_key = os.getenv('APRS_FI_API_KEY', '')
-    if not api_key:
+    if request.GET.get('live') != '1':
+        max_age_minutes = max(1, min(1440, int(os.getenv('APRS_CACHE_MAX_AGE_MINUTES', '30'))))
+        cutoff = timezone.now() - timedelta(minutes=max_age_minutes)
+        cached = APRSPosition.objects.filter(
+            latitude__gte=lat_s,
+            latitude__lte=lat_n,
+            longitude__gte=lon_w,
+            longitude__lte=lon_e,
+            updated_at__gte=cutoff,
+        )
+        features = []
+        for pos in cached:
+            features.append({
+                'type': 'Feature',
+                'geometry': {'type': 'Point', 'coordinates': [pos.longitude, pos.latitude]},
+                'properties': {
+                    'name': pos.callsign,
+                    'label': pos.callsign,
+                    'time': pos.updated_at.isoformat(),
+                    'altitude': pos.altitude,
+                    'comment': pos.comment,
+                    'symbol': pos.symbol,
+                    'path': pos.path,
+                    'course': pos.course,
+                    'speed': pos.speed,
+                },
+            })
+        return JsonResponse({
+            'type': 'FeatureCollection',
+            'features': features,
+            'meta': {
+                'source': 'cache',
+                'features_in_geofence': len(features),
+                'geofence': {'lat_s': lat_s, 'lat_n': lat_n, 'lon_w': lon_w, 'lon_e': lon_e},
+            },
+        }, json_dumps_params={'indent': 2})
+
+    callsign = os.getenv('APRS_CALLSIGN', 'N0CALL')
+    passwd = os.getenv('APRS_PASSCODE', '-1')
+    host = os.getenv('APRS_IS_HOST', 'rotate.aprs.net')
+    port_cfg = os.getenv('APRS_IS_PORT', '').strip()
+    if port_cfg:
+        port = int(port_cfg)
+    else:
+        port = 14580 if passwd != '-1' else 10152
+    collect_seconds = max(5, min(30, int(os.getenv('APRS_COLLECT_SECONDS', '12'))))
+
+    if passwd == '-1' and port == 14580:
         return JsonResponse({
             'type': 'FeatureCollection',
             'features': [],
-            'error': 'APRS_FI_API_KEY not configured',
+            'error': 'Port 14580 requires a verified passcode. Set APRS_PASSCODE to a valid passcode for your callsign (e.g. from aprslib.passcode("CALLSIGN")), or leave APRS_IS_PORT unset to use port 10152 with receive-only.',
         }, json_dumps_params={'indent': 2})
 
-    url = (
-        'https://api.aprs.fi/api/get?'
-        'what=loc&'
-        'apikey={apikey}&'
-        'minlat={minlat}&maxlat={maxlat}&minlng={minlng}&maxlng={maxlng}&'
-        'format=json'
-    ).format(
-        apikey=api_key,
-        minlat=minlat,
-        maxlat=maxlat,
-        minlng=minlng,
-        maxlng=maxlng,
-    )
+    area_filter = 'a/%s/%s/%s/%s t/po' % (lat_n, lon_w, lat_s, lon_e) if port == 14580 else ''
 
-    req = Request(
-        url,
-        headers={
-            'User-Agent': 'evalink/1.0 (+https://github.com/mars-society/evalink)',
-        },
-    )
+    raw_lines = []
+
     try:
-        with urlopen(req, timeout=10) as resp:
-            raw = resp.read().decode()
-    except (URLError, HTTPError, OSError) as e:
+        ais = aprslib.IS(callsign, passwd=passwd, host=host, port=port)
+        if area_filter:
+            ais.set_filter(area_filter)
+        ais.connect()
+    except (aprslib.ConnectionError, aprslib.LoginError, OSError) as e:
+        err = str(e)
+        if 'login' in err.lower() and port == 14580:
+            err = '%s Port 14580 requires a verified passcode; use APRS_PASSCODE or leave APRS_IS_PORT unset to use 10152.' % err
         return JsonResponse({
             'type': 'FeatureCollection',
             'features': [],
-            'error': str(e),
+            'error': 'APRS-IS connection failed: %s' % err,
         }, json_dumps_params={'indent': 2})
 
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as e:
-        return JsonResponse({
-            'type': 'FeatureCollection',
-            'features': [],
-            'error': 'Invalid JSON from aprs.fi: ' + str(e),
-        }, json_dumps_params={'indent': 2})
-
-    if data.get('result') != 'ok':
-        return JsonResponse({
-            'type': 'FeatureCollection',
-            'features': [],
-            'error': data.get('description', 'aprs.fi request failed'),
-        }, json_dumps_params={'indent': 2})
-
-    entries = data.get('entries', [])
-    features = []
-    for entry in entries:
+    def collect_from_socket():
+        deadline = time.time() + collect_seconds
         try:
-            lat = float(entry.get('lat', 0))
-            lng = float(entry.get('lng', 0))
+            for line in ais._socket_readlines(blocking=True):
+                if time.time() >= deadline:
+                    break
+                if line and not line.startswith(b'#'):
+                    raw_lines.append(line)
+        except Exception:
+            pass
+
+    thread = threading.Thread(target=collect_from_socket, daemon=True)
+    thread.start()
+    time.sleep(collect_seconds)
+    try:
+        ais.close()
+    except Exception:
+        pass
+    thread.join(timeout=5)
+
+    packets = []
+    for raw_line in raw_lines:
+        try:
+            line = raw_line.decode('utf-8', errors='replace').strip() if isinstance(raw_line, bytes) else str(raw_line).strip()
+            if not line or line.startswith('#'):
+                continue
+            pkt = aprslib.parse(line)
+            if isinstance(pkt, dict) and pkt.get('latitude') is not None and pkt.get('longitude') is not None:
+                packets.append(pkt)
+        except Exception:
+            continue
+
+    now = datetime.now(timezone.utc)
+    time_str = now.isoformat()
+    seen = {}
+    features = []
+    skip_geofence = request.GET.get('all') == '1'
+    for pkt in packets:
+        if not isinstance(pkt, dict):
+            continue
+        lat = pkt.get('latitude')
+        lon = pkt.get('longitude')
+        if lat is None or lon is None:
+            continue
+        try:
+            lat = float(lat)
+            lon = float(lon)
         except (TypeError, ValueError):
             continue
-        name = entry.get('name', '') or entry.get('srccall', '')
-        lasttime = entry.get('lasttime')
-        if lasttime is not None:
+        if not skip_geofence and not (lat_s <= lat <= lat_n and lon_w <= lon <= lon_e):
+            continue
+        name = pkt.get('from', '') or ''
+        key = (name, round(lat, 5), round(lon, 5))
+        if key in seen:
+            continue
+        seen[key] = True
+        alt = pkt.get('altitude')
+        if alt is not None:
             try:
-                dt = datetime.fromtimestamp(int(lasttime), tz=timezone.utc)
-                time_str = dt.isoformat()
-            except (TypeError, ValueError, OSError):
-                time_str = None
-        else:
-            time_str = None
-        altitude = entry.get('altitude')
-        if altitude is not None:
-            try:
-                altitude = float(altitude)
+                alt = float(alt)
             except (TypeError, ValueError):
-                altitude = None
+                alt = None
+        comment = pkt.get('comment')
+        symbol = pkt.get('symbol')
+        symbol_table = pkt.get('symbol_table', '')
+        if symbol and symbol_table:
+            symbol_display = symbol_table + symbol
+        else:
+            symbol_display = symbol
+        path = pkt.get('path', [])
+        path_str = ','.join(path) if isinstance(path, (list, tuple)) else str(path)
         prop = {
             'name': name,
             'label': name,
             'time': time_str,
-            'altitude': altitude,
-            'comment': entry.get('comment'),
-            'symbol': entry.get('symbol'),
-            'srccall': entry.get('srccall'),
-            'dstcall': entry.get('dstcall'),
-            'path': entry.get('path'),
-            'course': entry.get('course'),
-            'speed': entry.get('speed'),
+            'altitude': alt,
+            'comment': comment,
+            'symbol': symbol_display,
+            'path': path_str,
+            'course': pkt.get('course'),
+            'speed': pkt.get('speed'),
         }
         feat = {
             'type': 'Feature',
             'geometry': {
                 'type': 'Point',
-                'coordinates': [lng, lat],
+                'coordinates': [lon, lat],
             },
             'properties': prop,
         }
@@ -1012,6 +1079,12 @@ def aprs(request):
     return JsonResponse({
         'type': 'FeatureCollection',
         'features': features,
+        'meta': {
+            'raw_lines': len(raw_lines),
+            'packets_parsed': len(packets),
+            'features_in_geofence': len(features),
+            'geofence': {'lat_s': lat_s, 'lat_n': lat_n, 'lon_w': lon_w, 'lon_e': lon_e},
+        },
     }, json_dumps_params={'indent': 2})
 
 

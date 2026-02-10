@@ -175,3 +175,17 @@ class Aircraft(models.Model):
     features = models.JSONField(null=True, blank=True)
     updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
     updated_on = models.DateField(null=True, db_index=True)
+
+
+class APRSPosition(models.Model):
+    """Cache of last-seen APRS positions from the background feed (run_aprs_feed)."""
+    callsign = models.CharField(max_length=32, db_index=True, unique=True)
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    altitude = models.FloatField(null=True, blank=True)
+    symbol = models.CharField(max_length=16, null=True, blank=True)
+    comment = models.TextField(null=True, blank=True)
+    path = models.TextField(null=True, blank=True)
+    course = models.FloatField(null=True, blank=True)
+    speed = models.FloatField(null=True, blank=True)
+    updated_at = models.DateTimeField(null=False, db_index=True)
