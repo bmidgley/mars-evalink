@@ -1255,7 +1255,7 @@
                 markerData[name].coordinates.push(projection);
                 markerData[name].times.push(point.updated_at);
                 markerData[name].samples.push({wind_speed: point.wind_speed, wind_direction: point.wind_direction, temperature: point.temperature})
-                if(altitude) markerData[name].altitudes.push(altitude);
+                markerData[name].altitudes.push(altitude != null && altitude !== '' ? altitude : null);
             }
             waypoints = data.waypoints;
             displayWaypoints();
@@ -1306,7 +1306,7 @@
             }
         }
 
-        function updateSliderStats(times, coordinates, samples, value) {
+        function updateSliderStats(times, coordinates, samples, value, altitudes) {
             const index = parseInt(value, 10);
             if(coordinates.length <= index) return;
             const selected = times[index];
@@ -1317,6 +1317,8 @@
             const geo = ol.proj.toLonLat(coordinates[index]);
             const lat = geo[1].toFixed(7);
             const lon = geo[0].toFixed(7);
+            const alt = altitudes && index < altitudes.length && altitudes[index] != null ? Math.round(altitudes[index]) : null;
+            const coordsStr = alt != null ? `${lat},${lon},${alt}` : `${lat},${lon}`;
             var speed = 0;
 
             if(index > 0) {
@@ -1345,8 +1347,8 @@
                 selectedSample.innerHTML = "";
 
             selectedCoordinate.innerHTML = `
-                <a href="http://maps.google.com/maps?z=12&t=k&q=loc:${lat}+${lon}" target="_blank">${lat},${lon}</a>
-                <button onclick="if(clipboarding){navigator.clipboard.writeText('${lat},${lon}');window.alert('copied ${lat},${lon}');}">Copy</button>
+                <a href="http://maps.google.com/maps?z=12&t=k&q=loc:${lat}+${lon}" target="_blank">${coordsStr}</a>
+                <button onclick="if(clipboarding){navigator.clipboard.writeText('${coordsStr}');window.alert('copied ${coordsStr}');}">Copy</button>
             `;
         };
 
@@ -1378,8 +1380,9 @@
             timeSlider.setAttribute('max', times.length - 1);
             timeSlider.value = times.length - 1;
 
+            const altitudes = markerData[name].altitudes || [];
             timeSlider.oninput = function () {
-                updateSliderStats(times, coordinates, samples, timeSlider.value);
+                updateSliderStats(times, coordinates, samples, timeSlider.value, altitudes);
             };
 
             closeButton.onclick = function() {
@@ -1396,7 +1399,7 @@
             }
 
             timeSliderContainer.style.display = 'block';
-            updateSliderStats(times, coordinates, samples, timeSlider.value);
+            updateSliderStats(times, coordinates, samples, timeSlider.value, altitudes);
         }
 
         function createSvgDataURL(nodeType, r, g, b) {
