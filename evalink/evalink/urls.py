@@ -38,4 +38,5 @@ urlpatterns = [
     path('clear-redundant-logs', views.clear_redundant_logs, name='clear_redundant_logs'),
     path('aircraft.json', views.aircraft, name='aircraft'),
     path('aprs.json', views.aprs, name='aprs'),
+    path('stalenode', views.stalenode, name='stalenode'),
 ]

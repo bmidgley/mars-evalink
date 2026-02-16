@@ -24,6 +24,39 @@ import aprslib
 
 load_dotenv()
 
+
+def stalenode(request):
+    """Return comma-separated hardware node IDs of nodes outside inner geofence that have not reported location for delay minutes. No auth required."""
+    try:
+        delay_minutes = int(request.GET.get('delay', ''))
+    except (ValueError, TypeError):
+        return HttpResponse('delay parameter (integer minutes) required', status=400)
+    if delay_minutes < 0:
+        return HttpResponse('delay must be non-negative', status=400)
+    try:
+        campus = Campus.objects.get(name=os.getenv('CAMPUS'))
+    except Campus.DoesNotExist:
+        return HttpResponse('', content_type='text/plain')
+    inner_fence = campus.inner_geofence
+    if not inner_fence:
+        return HttpResponse('', content_type='text/plain')
+    cutoff = timezone.now() - timedelta(minutes=delay_minutes)
+    gateway_number = os.getenv('MQTT_NODE_NUMBER')
+    try:
+        gateway_number = int(gateway_number) if gateway_number else None
+    except (ValueError, TypeError):
+        gateway_number = None
+    qs = Station.objects.filter(
+        last_position__isnull=False,
+        last_position__updated_at__lt=cutoff,
+    ).exclude(station_type='infrastructure').exclude(station_type='ignore')
+    if gateway_number is not None:
+        qs = qs.exclude(hardware_number=gateway_number)
+    stale = [s for s in qs if s.outside(inner_fence)]
+    body = ','.join(str(s.hardware_node) for s in stale)
+    return HttpResponse(body, content_type='text/plain')
+
+
 @login_required
 def index(request):
     return render(request, "map.html")
