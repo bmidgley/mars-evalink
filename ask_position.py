@@ -10,6 +10,17 @@ import urllib.request
 STALENODE_URL = "https://evalink.archresearch.net/stalenode?delay=1"
 
 
+def _print_no_stale():
+    print("No stale nodes found")
+    which_result = subprocess.run(
+        ["which", "meshtastic"],
+        capture_output=True,
+        text=True,
+    )
+    path = (which_result.stdout or "").strip() if which_result.returncode == 0 else ""
+    print(path if path else "(which meshtastic: not found)")
+
+
 def main():
     try:
         with urllib.request.urlopen(STALENODE_URL) as resp:
@@ -18,10 +29,11 @@ def main():
         print(f"Failed to fetch stalenode: {e}")
         return 1
     if not body:
-        print("No stale nodes found")
+        _print_no_stale()
         return 0
     nodes = [s.strip() for s in body.split(",") if s.strip()]
     if not nodes:
+        _print_no_stale()
         return 0
     for node in nodes:
         # Pass node as separate argument so leading ! or other chars need no escaping
