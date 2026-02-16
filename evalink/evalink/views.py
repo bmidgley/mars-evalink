@@ -26,7 +26,7 @@ load_dotenv()
 
 
 def stalenode(request):
-    """Return comma-separated hardware node IDs of nodes outside inner geofence, within outer geofence, that have not reported location for delay minutes. No auth required."""
+    """Return comma-separated hardware node IDs of nodes outside inner geofence, within outer geofence, that have not reported location for delay minutes. Excludes nodes that have not reported in the last 6 hours. No auth required."""
     try:
         delay_minutes = int(request.GET.get('delay', ''))
     except (ValueError, TypeError):
@@ -42,6 +42,7 @@ def stalenode(request):
         return HttpResponse('', content_type='text/plain')
     outer_fence = campus.outer_geofence
     cutoff = timezone.now() - timedelta(minutes=delay_minutes)
+    six_hours_ago = timezone.now() - timedelta(hours=6)
     gateway_number = os.getenv('MQTT_NODE_NUMBER')
     try:
         gateway_number = int(gateway_number) if gateway_number else None
@@ -50,6 +51,7 @@ def stalenode(request):
     qs = Station.objects.filter(
         last_position__isnull=False,
         last_position__updated_at__lt=cutoff,
+        last_position__updated_at__gte=six_hours_ago,
     ).exclude(station_type='infrastructure').exclude(station_type='ignore')
     if gateway_number is not None:
         qs = qs.exclude(hardware_number=gateway_number)
