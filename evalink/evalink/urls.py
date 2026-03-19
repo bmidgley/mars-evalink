@@ -39,4 +39,5 @@ urlpatterns = [
     path('aircraft.json', views.aircraft, name='aircraft'),
     path('aprs.json', views.aprs, name='aprs'),
     path('stalenode', views.stalenode, name='stalenode'),
+    path('profile/campus', views.set_profile_campus, name='set_profile_campus'),
 ]

@@ -64,7 +64,59 @@ def stalenode(request):
 
 @login_required
 def index(request):
-    return render(request, "map.html")
+    """Render map with default campus from user profile or env; pass coords for initial map view."""
+    default_campus_id = None
+    default_latitude = None
+    default_longitude = None
+    try:
+        env_campus = Campus.objects.get(name=os.getenv('CAMPUS'))
+        default_campus_id = env_campus.id
+        default_latitude = env_campus.latitude
+        default_longitude = env_campus.longitude
+    except (Campus.DoesNotExist, TypeError):
+        pass
+    profile = getattr(request.user, 'profile', None)
+    if profile is None:
+        try:
+            profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        except Exception:
+            profile = None
+    if profile and profile.campus_id:
+        default_campus_id = profile.campus_id
+        default_latitude = profile.campus.latitude
+        default_longitude = profile.campus.longitude
+    context = {
+        'default_campus_id': default_campus_id,
+        'default_latitude': default_latitude,
+        'default_longitude': default_longitude,
+    }
+    return render(request, "map.html", context)
+
+
+@login_required
+def set_profile_campus(request):
+    """Create or update the current user's profile and set campus to the given campus_id (POST, JSON body)."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    try:
+        body = json.loads(request.body)
+        campus_id = body.get('campus_id')
+    except (json.JSONDecodeError, TypeError):
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    if campus_id is not None:
+        try:
+            campus_id = int(campus_id)
+        except (ValueError, TypeError):
+            return JsonResponse({'error': 'campus_id must be an integer or null'}, status=400)
+        try:
+            Campus.objects.get(pk=campus_id)
+        except Campus.DoesNotExist:
+            return JsonResponse({'error': 'Campus not found'}, status=404)
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    profile.campus_id = campus_id
+    profile.save()
+    return JsonResponse({'ok': True, 'campus_id': profile.campus_id})
+
 
 @login_required
 def features(request):

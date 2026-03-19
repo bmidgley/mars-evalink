@@ -723,7 +723,7 @@
         </button>
         <div class="drawer-content">
             <div class="drawer-section">
-                <select id="campusDropdown" onChange="centerMapOnCampus(this.options[this.selectedIndex].value);">
+                <select id="campusDropdown" onChange="onCampusChange(this.options[this.selectedIndex].value);">
                     <option value="">Loading campuses...</option>
                 </select>
             </div>
@@ -835,6 +835,9 @@
     </div>
 
     <script>
+        window.DEFAULT_CAMPUS_ID = {{ default_campus_id|default:"null" }};
+        window.DEFAULT_MAP_LON = {{ default_longitude|default:"-110.7919148" }};
+        window.DEFAULT_MAP_LAT = {{ default_latitude|default:"38.4065268" }};
         let clipboarding = false;
         navigator.permissions.query({ name: "clipboard-write" }).then((result) => {
             if (result.state === "granted" || result.state === "prompt") {
@@ -915,7 +918,7 @@
                 // Add default option
                 const defaultOption = document.createElement('option');
                 defaultOption.value = '';
-                defaultOption.text = 'Zoom to campus...';
+                defaultOption.text = 'Campus...';
                 dropdown.appendChild(defaultOption);
                 
                 // Add campus options
@@ -933,6 +936,9 @@
                         elevation: campus.elevation
                     };
                 });
+                if (window.DEFAULT_CAMPUS_ID && campusData[window.DEFAULT_CAMPUS_ID]) {
+                    dropdown.value = String(window.DEFAULT_CAMPUS_ID);
+                }
             } catch (error) {
                 console.error('Error loading campuses:', error);
                 const dropdown = document.getElementById('campusDropdown');
@@ -953,6 +959,26 @@
             
             // Set campus zoom level to 14
             map.getView().setZoom(14);
+        }
+
+        async function onCampusChange(campusId) {
+            centerMapOnCampus(campusId);
+            const payload = { campus_id: campusId ? parseInt(campusId, 10) : null };
+            try {
+                const response = await fetch('/profile/campus', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                    body: JSON.stringify(payload),
+                });
+                if (!response.ok) {
+                    console.error('Failed to save campus preference', await response.text());
+                }
+            } catch (e) {
+                console.error('Error saving campus preference', e);
+            }
         }
 
         async function populateHistory() {
@@ -1749,7 +1775,7 @@
                 aircraftLayer,
             ],
             view: new ol.View({
-                center: ol.proj.fromLonLat([-110.7919148, 38.4065268]),
+                center: ol.proj.fromLonLat([window.DEFAULT_MAP_LON, window.DEFAULT_MAP_LAT]),
                 zoom: 13,
             }),
         });

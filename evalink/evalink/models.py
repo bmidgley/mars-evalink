@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.contrib.auth.models import User
 
 from django.utils import timezone
@@ -46,6 +47,7 @@ class StationMeasure(models.Model):
 class PositionLog(models.Model):
     message_id = models.BigIntegerField(db_index=True, null=True)
     station = models.ForeignKey(Station, on_delete=models.CASCADE, db_index=True)
+    campus = models.ForeignKey('Campus', on_delete=models.SET_NULL, null=True, blank=True, db_index=True)
     latitude = models.FloatField(db_index=True)
     longitude = models.FloatField(db_index=True)
     altitude = models.FloatField(null=True)
@@ -113,6 +115,12 @@ class Geofence(models.Model):
     longitude2 = models.FloatField()
     def outside(self, lat, lon):
         return lat < self.latitude1 or lat > self.latitude2 or lon < self.longitude1 or lon > self.longitude2
+
+class UserProfile(models.Model):
+    """One-to-one extension of User; use for app-specific user data (e.g. campus)."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile', db_index=True)
+    campus = models.ForeignKey('Campus', on_delete=models.SET_NULL, null=True, blank=True, db_index=True)
+
 
 class Campus(models.Model):
     name = models.CharField(max_length=64, db_index=True, null=False)
