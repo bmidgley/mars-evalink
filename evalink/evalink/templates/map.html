@@ -1122,10 +1122,40 @@
         checkTexts(true)
         setInterval(checkTexts, 15000);
 
+        function applyNextParamToLoginUrl(loginUrl) {
+            const u = new URL(loginUrl, window.location.origin);
+            const returnPath = window.location.pathname + window.location.search + window.location.hash;
+            u.searchParams.set('next', returnPath);
+            return u.href;
+        }
+
         function updateGeoJSON() {
-            fetch(geojsonUrl)
-                .then(response => response.json())
+            fetch(geojsonUrl, {
+                redirect: 'manual',
+                credentials: 'same-origin',
+            })
+                .then(response => {
+                    if (response.status >= 300 && response.status < 400) {
+                        const loc = response.headers.get('Location');
+                        window.location.href = applyNextParamToLoginUrl(
+                            loc != null && loc !== '' ? loc : '/accounts/login/'
+                        );
+                        return;
+                    }
+                    if (response.type === 'opaqueredirect') {
+                        window.location.href = applyNextParamToLoginUrl('/accounts/login/');
+                        return;
+                    }
+                    if (!response.ok) {
+                        console.error('Error loading GeoJSON:', response.status);
+                        return;
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    if (data === undefined) {
+                        return;
+                    }
                     // vectorSource holds stations
                     vectorSource.clear();
                     displayWaypoints();
