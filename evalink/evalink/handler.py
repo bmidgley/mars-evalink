@@ -4,6 +4,7 @@ django.setup()
 from evalink.models import *
 from django.db import IntegrityError
 from datetime import datetime, timezone
+from django.utils import timezone as django_timezone
 import pytz
 import os
 
@@ -194,47 +195,86 @@ def iso_time(_seconds):
     # nodes are reporting current time incorrectly, so disregard and return now in iso
     return datetime.now().isoformat()
 
-def process_adsb_aircraft(hex_code, message):
-    # Extract latitude and longitude from message
-    lat = message.get('lat')
-    lon = message.get('lon')
+def process_aircraft(hex_code, message):
+    def _as_float(value):
+        try:
+            if value is None:
+                return None
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _parse_timestamp(value, fallback):
+        if not value or not isinstance(value, str):
+            return fallback
+        try:
+            parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        except ValueError:
+            return fallback
+        if parsed.tzinfo is None:
+            return django_timezone.make_aware(parsed, django_timezone.utc)
+        return parsed
+
+    # Accept either "lon" or "long" from aircraft feeds
+    lat = _as_float(message.get('lat'))
+    lon = _as_float(message.get('lon', message.get('long')))
     
     # Skip if no position data
     if lat is None or lon is None:
         # print(f'skipping aircraft {hex_code} because it has no position data')
         return
     
-    # Check all campuses to see if aircraft is within outer geofence
+    def _save_aircraft_for_campus(campus):
+        tz = pytz.timezone(campus.time_zone)
+        current_time = datetime.now(timezone.utc)
+        current_time_tz = current_time.astimezone(tz)
+        today = current_time_tz.date()
+        timestamp = _parse_timestamp(message.get('iso'), current_time)
+
+        aircraft, created = Aircraft.objects.get_or_create(
+            hex=hex_code,
+            defaults={
+                'campus': campus,
+                'features': message,
+                'updated_at': current_time,
+                'updated_on': today,
+            }
+        )
+
+        if not created:
+            aircraft.campus = campus
+            aircraft.features = message
+            aircraft.updated_at = current_time
+            aircraft.updated_on = today
+            aircraft.save()
+
+        AircraftPositionLog.objects.create(
+            aircraft=aircraft,
+            campus=campus,
+            latitude=lat,
+            longitude=lon,
+            altitude=_as_float(message.get('alt')),
+            ground_speed=_as_float(message.get('speed')),
+            ground_track=_as_float(message.get('course')),
+            timestamp=timestamp,
+            updated_on=today,
+            updated_at=current_time,
+        )
+
+    # RemoteID messages should use explicit CAMPUS routing (previous run_remoteid_feed behavior)
+    if 'ID' in message:
+        campus_name = (os.getenv('CAMPUS') or '').strip()
+        if not campus_name:
+            return
+        campus = Campus.objects.filter(name=campus_name).first()
+        if campus is None:
+            return
+        _save_aircraft_for_campus(campus)
+        return
+
+    # ADS-B style messages remain geofence-gated
     campuses = Campus.objects.filter(outer_geofence__isnull=False).select_related('outer_geofence')
-    
     for campus in campuses:
         if campus.outer_geofence and not campus.outer_geofence.outside(lat, lon):
-            # Aircraft is within this campus's outer geofence
-            tz = pytz.timezone(campus.time_zone)
-            current_time = datetime.now(timezone.utc)
-            current_time_tz = current_time.astimezone(tz)
-            today = current_time_tz.date()
-            
-            # Update or create Aircraft record
-            aircraft, created = Aircraft.objects.get_or_create(
-                hex=hex_code,
-                defaults={
-                    'campus': campus,
-                    'features': message,
-                    'updated_at': current_time,
-                    'updated_on': today,
-                }
-            )
-            
-            if not created:
-                # Update existing record
-                aircraft.campus = campus
-                aircraft.features = message
-                aircraft.updated_at = current_time
-                aircraft.updated_on = today
-                aircraft.save()
-            
-            # print(f'aircraft {aircraft.hex} updated at {current_time} on {today}')
+            _save_aircraft_for_campus(campus)
             return
-    
-    # Aircraft is not within any campus outer geofence, do nothing

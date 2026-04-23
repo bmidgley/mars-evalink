@@ -937,47 +937,44 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
 @login_required
 def aircraft(request):
-    """Return aircraft data from database, limited to entries updated within the last 15 minutes"""
-    # Get the cutoff time (15 minutes ago)
+    """Return aircraft with latest positions from the last 15 minutes."""
     cutoff_time = timezone.now() - timedelta(minutes=15)
-    
-    # Query aircraft updated within the last 15 minutes
-    aircraft_list = Aircraft.objects.filter(updated_at__gte=cutoff_time).select_related('campus')
-    
-    # Build aircraft data from database records
+
+    # Latest position per aircraft within the freshness window.
+    recent_positions = (
+        AircraftPositionLog.objects
+        .filter(updated_at__gte=cutoff_time)
+        .select_related('aircraft')
+        .order_by('aircraft_id', '-updated_at')
+        .distinct('aircraft_id')
+    )
+
     aircraft_data = []
-    for aircraft in aircraft_list:
+    for position in recent_positions:
+        aircraft = position.aircraft
         if not aircraft.features:
-            continue
-        
-        # Extract data from features JSONField
-        features = aircraft.features
-        lat = features.get('lat')
-        lon = features.get('lon')
-        
-        # Skip if no position data
-        if lat is None or lon is None:
-            continue
-        
-        # Build aircraft object in expected format
+            features = {}
+        else:
+            features = aircraft.features
+
+        # Keep existing response shape; source position from AircraftPositionLog.
         aircraft_obj = {
             'hex': aircraft.hex,
-            'lat': lat,
-            'lon': lon,
-            'alt_baro': features.get('alt_baro'),
-            'gs': features.get('gs'),
-            'track': features.get('track'),
+            'lat': position.latitude,
+            'lon': position.longitude,
+            'alt_baro': features.get('alt_baro', position.altitude),
+            'gs': features.get('gs', position.ground_speed),
+            'track': features.get('track', position.ground_track),
             'flight': features.get('flight'),
             'squawk': features.get('squawk'),
             'category': features.get('category'),
             'messages': features.get('messages'),
             'seen': features.get('seen'),
-            'updated_at': aircraft.updated_at.isoformat() if aircraft.updated_at else None,
+            'updated_at': position.updated_at.isoformat() if position.updated_at else None,
         }
-        
+
         aircraft_data.append(aircraft_obj)
-    
-    # Return in expected format
+
     return JsonResponse({
         'now': int(timezone.now().timestamp()),
         'aircraft': aircraft_data

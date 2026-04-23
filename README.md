@@ -171,3 +171,12 @@ Allow radios to be seen on mqtt.
 meshtastic --ch-set module_settings.position_precision 32 --ch-index 0
 ```
 
+## RemoteID
+
+Connect an esp32s3 to a serial port and run the remoteid sketch to track drones. Configure the serial port name with the environment variable "REMOTEID_PORT" and use baud 115200. An example result from this device looks like:
+
+```
+{"ID":"18656A000A46", "lat":0.000000, "long":0.000000, "alt":-1000.0, "iso":"2028-01-15T05:09:52Z", "packet_hex":"B716FAFF0DE1F019070012313836353641303236333000000000000000000000000000225068616E746F6D340000000000000000000000000000000000000000000000000000000000000000000000000000000020300011000000000000000000000000000000000000000000320044726F6E6573204944207465737420666C6967687400000000000000000000000000000000000000000000000000000052000000000000000000000000000000000000000000000000"}
+```
+
+The firmware also produces debug lines that are not JSON (no leading "{") that should be ignored.
