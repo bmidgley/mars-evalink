@@ -195,6 +195,9 @@ def iso_time(_seconds):
     # nodes are reporting current time incorrectly, so disregard and return now in iso
     return datetime.now().isoformat()
 
+# ADS-B barometric/geometric altitudes (dump1090/readsb style) are in feet; store meters in DB.
+FEET_TO_METERS = 0.3048
+
 def process_aircraft(hex_code, message):
     def _as_float(value):
         try:
@@ -215,9 +218,38 @@ def process_aircraft(hex_code, message):
             return django_timezone.make_aware(parsed, django_timezone.utc)
         return parsed
 
-    # Accept either "lon" or "long" from aircraft feeds
-    lat = _as_float(message.get('lat'))
-    lon = _as_float(message.get('lon', message.get('long')))
+    def _altitude_meters_from_message(msg, is_remoteid):
+        if not isinstance(msg, dict):
+            return None
+
+        def _raw_value(key):
+            raw = msg.get(key)
+            if raw is None:
+                return None
+            if isinstance(raw, str):
+                lowered = raw.strip().lower()
+                if lowered in ('', 'ground'):
+                    return None
+            return _as_float(raw)
+
+        if is_remoteid:
+            for key in ('alt', 'altitude'):
+                value = _raw_value(key)
+                if value is not None:
+                    return int(round(value))
+            return None
+
+        for key in ('alt_baro', 'alt_geom', 'altitude', 'alt'):
+            feet = _raw_value(key)
+            if feet is not None:
+                return int(round(feet * FEET_TO_METERS))
+        return None
+
+    is_remoteid = isinstance(message, dict) and 'ID' in message
+
+    # Accept lat/lon or latitude/longitude from aircraft / drone feeds
+    lat = _as_float(message.get('lat', message.get('latitude')))
+    lon = _as_float(message.get('lon', message.get('long', message.get('longitude'))))
     
     # Skip if no position data
     if lat is None or lon is None:
@@ -241,14 +273,29 @@ def process_aircraft(hex_code, message):
             }
         )
 
+        prev_features = aircraft.features if isinstance(aircraft.features, dict) else {}
+        if isinstance(message, dict):
+            merged_features = {**prev_features, **message}
+        else:
+            merged_features = message
+
         if not created:
             aircraft.campus = campus
-            aircraft.features = message
+            aircraft.features = merged_features
             aircraft.updated_at = current_time
             aircraft.updated_on = today
             aircraft.save()
 
-        minute_start = timestamp.replace(second=0, microsecond=0)
+        mf = merged_features if isinstance(merged_features, dict) else {}
+        altitude_for_log = _altitude_meters_from_message(
+            merged_features if isinstance(merged_features, dict) else message,
+            is_remoteid,
+        )
+
+        ts_for_minute = timestamp
+        if django_timezone.is_naive(ts_for_minute):
+            ts_for_minute = django_timezone.make_aware(ts_for_minute, timezone.utc)
+        minute_start = ts_for_minute.replace(second=0, microsecond=0)
         minute_end = minute_start + timedelta(minutes=1)
         existing = (
             AircraftPositionLog.objects.filter(
@@ -265,9 +312,9 @@ def process_aircraft(hex_code, message):
         try:
             if existing:
                 existing.campus = campus
-                existing.altitude = _as_float(message.get('alt'))
-                existing.ground_speed = _as_float(message.get('speed'))
-                existing.ground_track = _as_float(message.get('course'))
+                existing.altitude = altitude_for_log
+                existing.ground_speed = _as_float(mf.get('speed', mf.get('gs')))
+                existing.ground_track = _as_float(mf.get('course', mf.get('track')))
                 existing.timestamp = timestamp
                 existing.timestamp_minute = minute_start
                 existing.updated_on = today
@@ -291,9 +338,9 @@ def process_aircraft(hex_code, message):
                 campus=campus,
                 latitude=lat,
                 longitude=lon,
-                altitude=_as_float(message.get('alt')),
-                ground_speed=_as_float(message.get('speed')),
-                ground_track=_as_float(message.get('course')),
+                altitude=altitude_for_log,
+                ground_speed=_as_float(mf.get('speed', mf.get('gs'))),
+                ground_track=_as_float(mf.get('course', mf.get('track'))),
                 timestamp=timestamp,
                 timestamp_minute=minute_start,
                 updated_on=today,

@@ -1,3 +1,5 @@
+from datetime import timezone as datetime_timezone
+
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -78,6 +80,20 @@ class AircraftPositionLog(models.Model):
                 name='unique_aircraftpositionlog_aircraft_lat_lon_minute',
             ),
         ]
+
+    def save(self, *args, **kwargs):
+        if self.timestamp is not None:
+            ts = self.timestamp
+            if timezone.is_naive(ts):
+                ts = timezone.make_aware(ts, datetime_timezone.utc)
+            self.timestamp_minute = ts.replace(second=0, microsecond=0)
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None and self.timestamp is not None:
+            u = list(update_fields)
+            if 'timestamp_minute' not in u:
+                u.append('timestamp_minute')
+            kwargs['update_fields'] = u
+        super().save(*args, **kwargs)
 
 class TelemetryLog(models.Model):
     message_id = models.BigIntegerField(db_index=True, null=True, unique=True)

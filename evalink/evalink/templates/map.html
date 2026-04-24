@@ -1601,7 +1601,8 @@
             source: aircraftSource,
             style: function (feature) {
                 const track = feature.get('track');
-                const alt = feature.get('alt_baro') || 0;
+                const altRaw = feature.get('altitude');
+                const alt = (altRaw != null && altRaw !== undefined && !isNaN(altRaw)) ? altRaw : 0;
                 const speed = feature.get('gs') || 0;
                 const source = feature.get('source');
 
@@ -1642,7 +1643,7 @@
             let r = 0, g = 0, b = 0;
             if (altitude > 0) {
                 // Scale from light blue (low) to dark blue (high)
-                const altFactor = Math.min(altitude / 40000, 1); // Max at 40k feet
+                const altFactor = Math.min(altitude / 12000, 1); // altitude in meters from API
                 r = Math.floor(50 + altFactor * 100);
                 g = Math.floor(100 + altFactor * 50);
                 b = Math.floor(200 + altFactor * 55);
@@ -1668,7 +1669,7 @@
         function createDroneIcon(altitude, speed) {
             let r = 0, g = 0, b = 0;
             if (altitude > 0) {
-                const altFactor = Math.min(altitude / 40000, 1);
+                const altFactor = Math.min(altitude / 12000, 1); // altitude in meters from API
                 r = Math.floor(50 + altFactor * 100);
                 g = Math.floor(100 + altFactor * 50);
                 b = Math.floor(200 + altFactor * 55);
@@ -1787,7 +1788,10 @@
                     // Update all aircraft properties
                     feature.set('lat', aircraft.lat);
                     feature.set('lon', aircraft.lon);
-                    feature.set('alt_baro', aircraft.alt_baro || 0);
+                    const altVal = (aircraft.altitude != null && aircraft.altitude !== undefined && !isNaN(aircraft.altitude))
+                        ? aircraft.altitude
+                        : 0;
+                    feature.set('altitude', altVal);
                     feature.set('gs', aircraft.gs || 0);
                     // Track can be null/undefined, so handle it properly
                     feature.set('track', aircraft.track !== null && aircraft.track !== undefined ? aircraft.track : null);
@@ -1804,7 +1808,10 @@
                     
                     // Create label for popup
                     const flight = aircraft.flight ? aircraft.flight.trim() : hex;
-                    const alt = aircraft.alt_baro ? `${Math.round(aircraft.alt_baro)} ft` : 'Unknown';
+                    const altNum = (aircraft.altitude != null && aircraft.altitude !== undefined && !isNaN(aircraft.altitude))
+                        ? aircraft.altitude
+                        : null;
+                    const alt = altNum != null ? `${Math.round(altNum)} m` : 'Unknown';
                     const speed = aircraft.gs ? `${Math.round(aircraft.gs)} kts` : 'Unknown';
                     const heading = aircraft.track ? `${Math.round(aircraft.track)}°` : 'Unknown';
                     const age = calculateAge(aircraft.updated_at);
@@ -1957,7 +1964,8 @@
                     info.style.top = event.pixel[1] + 'px';
                     info.style.visibility = 'visible';
                     const flight = feature.get('flight') || feature.get('hex');
-                    const alt = feature.get('alt_baro') ? `${Math.round(feature.get('alt_baro'))} ft` : 'Unknown';
+                    const altNum = feature.get('altitude');
+                    const alt = (altNum != null && altNum !== undefined && !isNaN(altNum)) ? `${Math.round(altNum)} m` : 'Unknown';
                     const speed = feature.get('gs') ? `${Math.round(feature.get('gs'))} kts` : 'Unknown';
                     const heading = feature.get('track') ? `${Math.round(feature.get('track'))}°` : 'Unknown';
                     const age = calculateAge(feature.get('updated_at'));
@@ -2067,7 +2075,8 @@
                 if (type === 'aircraft') {
                     // Show aircraft info on hover
                     const flight = feature.get('flight') || feature.get('hex');
-                    const alt = feature.get('alt_baro') ? `${Math.round(feature.get('alt_baro'))} ft` : 'Unknown';
+                    const altNumHover = feature.get('altitude');
+                    const alt = (altNumHover != null && altNumHover !== undefined && !isNaN(altNumHover)) ? `${Math.round(altNumHover)} m` : 'Unknown';
                     const speed = feature.get('gs') ? `${Math.round(feature.get('gs'))} kts` : 'Unknown';
                     const heading = feature.get('track') ? `${Math.round(feature.get('track'))}°` : 'Unknown';
                     const age = calculateAge(feature.get('updated_at'));

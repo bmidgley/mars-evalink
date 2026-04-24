@@ -24,6 +24,44 @@ import aprslib
 
 load_dotenv()
 
+# ADS-B dump1090-style alt_baro/alt_geom are feet; RemoteID uses meters for alt.
+FEET_TO_METERS = 0.3048
+
+
+def aircraft_feature_altitude_meters(features):
+    if not isinstance(features, dict):
+        return None
+    is_remoteid = features.get('source') == 'remoteid'
+
+    def _as_float(value):
+        try:
+            if value is None:
+                return None
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _raw(key):
+        raw = features.get(key)
+        if raw is None:
+            return None
+        if isinstance(raw, str) and raw.strip().lower() in ('', 'ground'):
+            return None
+        return _as_float(raw)
+
+    if is_remoteid:
+        for key in ('alt', 'altitude'):
+            v = _raw(key)
+            if v is not None:
+                return int(round(v))
+        return None
+
+    for key in ('alt_baro', 'alt_geom', 'altitude', 'alt'):
+        feet = _raw(key)
+        if feet is not None:
+            return int(round(feet * FEET_TO_METERS))
+    return None
+
 
 def stalenode(request):
     """Return comma-separated hardware node IDs of nodes outside inner geofence, within outer geofence, that have not reported location for delay minutes. Excludes nodes that have not reported in the last 6 hours. No auth required."""
@@ -957,14 +995,26 @@ def aircraft(request):
         else:
             features = aircraft.features
 
-        # Keep existing response shape; source position from AircraftPositionLog.
+        # Position from AircraftPositionLog; metadata from latest aircraft.features when present.
+        altitude = position.altitude
+        if altitude is None:
+            altitude = aircraft_feature_altitude_meters(features)
+        if altitude is not None:
+            altitude = int(round(altitude))
+        ground_speed = position.ground_speed
+        if ground_speed is None:
+            ground_speed = features.get('gs')
+        ground_track = position.ground_track
+        if ground_track is None:
+            ground_track = features.get('track')
+
         aircraft_obj = {
             'hex': aircraft.hex,
             'lat': position.latitude,
             'lon': position.longitude,
-            'alt_baro': features.get('alt_baro', position.altitude),
-            'gs': features.get('gs', position.ground_speed),
-            'track': features.get('track', position.ground_track),
+            'altitude': altitude,
+            'gs': ground_speed,
+            'track': ground_track,
             'flight': features.get('flight'),
             'squawk': features.get('squawk'),
             'category': features.get('category'),
