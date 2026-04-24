@@ -970,6 +970,7 @@ def aircraft(request):
             'category': features.get('category'),
             'messages': features.get('messages'),
             'seen': features.get('seen'),
+            'source': features.get('source'),
             'updated_at': position.updated_at.isoformat() if position.updated_at else None,
         }
 
