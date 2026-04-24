@@ -3,7 +3,7 @@ django.setup()
 
 from evalink.models import *
 from django.db import IntegrityError
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from django.utils import timezone as django_timezone
 import pytz
 import os
@@ -248,18 +248,60 @@ def process_aircraft(hex_code, message):
             aircraft.updated_on = today
             aircraft.save()
 
-        AircraftPositionLog.objects.create(
-            aircraft=aircraft,
-            campus=campus,
-            latitude=lat,
-            longitude=lon,
-            altitude=_as_float(message.get('alt')),
-            ground_speed=_as_float(message.get('speed')),
-            ground_track=_as_float(message.get('course')),
-            timestamp=timestamp,
-            updated_on=today,
-            updated_at=current_time,
+        minute_start = timestamp.replace(second=0, microsecond=0)
+        minute_end = minute_start + timedelta(minutes=1)
+        existing = (
+            AircraftPositionLog.objects.filter(
+                aircraft=aircraft,
+                latitude=lat,
+                longitude=lon,
+                timestamp__gte=minute_start,
+                timestamp__lt=minute_end,
+            )
+            .order_by('-timestamp')
+            .first()
         )
+
+        try:
+            if existing:
+                existing.campus = campus
+                existing.altitude = _as_float(message.get('alt'))
+                existing.ground_speed = _as_float(message.get('speed'))
+                existing.ground_track = _as_float(message.get('course'))
+                existing.timestamp = timestamp
+                existing.timestamp_minute = minute_start
+                existing.updated_on = today
+                existing.updated_at = current_time
+                existing.save(
+                    update_fields=[
+                        'campus',
+                        'altitude',
+                        'ground_speed',
+                        'ground_track',
+                        'timestamp',
+                        'timestamp_minute',
+                        'updated_on',
+                        'updated_at',
+                    ]
+                )
+                return
+
+            AircraftPositionLog.objects.create(
+                aircraft=aircraft,
+                campus=campus,
+                latitude=lat,
+                longitude=lon,
+                altitude=_as_float(message.get('alt')),
+                ground_speed=_as_float(message.get('speed')),
+                ground_track=_as_float(message.get('course')),
+                timestamp=timestamp,
+                timestamp_minute=minute_start,
+                updated_on=today,
+                updated_at=current_time,
+            )
+        except IntegrityError:
+            # Concurrent listener inserted an equivalent row first.
+            return
 
     # RemoteID messages should use explicit CAMPUS routing (previous run_remoteid_feed behavior)
     if 'ID' in message:

@@ -1,6 +1,7 @@
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
 from django import db
+from django.db import IntegrityError
 import time
 import os
 import json
@@ -23,6 +24,12 @@ def on_message(_client, _userdata, msg):
             hex_code = msg.topic.split('/')[-1]
             message = json.loads(msg.payload)
             handler.process_aircraft(hex_code, message)
+        except IntegrityError as error:
+            if 'unique_aircraftpositionlog_aircraft_lat_lon_minute' in str(error):
+                return
+            print(f'handler failed to process aircraft {msg.topic}: {error} {traceback.print_tb(error.__traceback__)}')
+            db.close_old_connections()
+            time.sleep(1)
         except Exception as error:
             print(f'handler failed to process aircraft {msg.topic}: {error} {traceback.print_tb(error.__traceback__)}')
             db.close_old_connections()

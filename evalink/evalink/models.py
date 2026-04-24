@@ -67,8 +67,17 @@ class AircraftPositionLog(models.Model):
     ground_speed = models.FloatField(null=True)
     ground_track = models.FloatField(null=True)
     timestamp = models.DateTimeField(null=True, db_index=True)
+    timestamp_minute = models.DateTimeField(null=True, db_index=True)
     updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
     updated_on = models.DateField(null=True, db_index=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['aircraft', 'latitude', 'longitude', 'timestamp_minute'],
+                name='unique_aircraftpositionlog_aircraft_lat_lon_minute',
+            ),
+        ]
 
 class TelemetryLog(models.Model):
     message_id = models.BigIntegerField(db_index=True, null=True, unique=True)
