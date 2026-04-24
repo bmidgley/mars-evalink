@@ -122,7 +122,9 @@ class Command(BaseCommand):
                         continue
                     hex_code = raw_hex_code.upper()
                     topic = f"{topic_root}/aircraft/{hex_code}"
-                    client.publish(topic, json.dumps(message))
+                    payload = dict(message)
+                    payload["source"] = "remoteid"
+                    client.publish(topic, json.dumps(payload))
                     self.stdout.write(f"Published RemoteID position for {hex_code}")
         except KeyboardInterrupt:
             self.stdout.write("\nStopping RemoteID feed.")
