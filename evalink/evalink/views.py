@@ -64,28 +64,36 @@ def aircraft_feature_altitude_meters(features):
 
 
 def stalenode(request):
-    """Return comma-separated hardware node IDs of nodes outside inner geofence, within outer geofence, that have not reported location for delay minutes. Excludes nodes that have not reported in the last 6 hours. No auth required."""
+    """Return JSON listing stale stations (same selection as before: outside inner geofence, inside outer, quiet for delay minutes, seen within 6h). Each station includes ids and MQTT-oriented fields (topic, gateway from, to, channel) for downlink envelopes; hardware_node is the meshtastic hex id for CLI --request-position. No auth required."""
     try:
         delay_minutes = int(request.GET.get('delay', ''))
     except (ValueError, TypeError):
-        return HttpResponse('delay parameter (integer minutes) required', status=400)
+        return JsonResponse({'error': 'delay parameter (integer minutes) required'}, status=400)
     if delay_minutes < 0:
-        return HttpResponse('delay must be non-negative', status=400)
-    try:
-        campus = Campus.objects.get(name=os.getenv('CAMPUS'))
-    except Campus.DoesNotExist:
-        return HttpResponse('', content_type='text/plain')
-    inner_fence = campus.inner_geofence
-    if not inner_fence:
-        return HttpResponse('', content_type='text/plain')
-    outer_fence = campus.outer_geofence
-    cutoff = timezone.now() - timedelta(minutes=delay_minutes)
-    six_hours_ago = timezone.now() - timedelta(hours=6)
+        return JsonResponse({'error': 'delay must be non-negative'}, status=400)
+    topic_root = (os.getenv('MQTT_TOPIC') or '').strip()
+    mqtt_downlink_topic = f'{topic_root}/2/json/mqtt/' if topic_root else ''
     gateway_number = os.getenv('MQTT_NODE_NUMBER')
     try:
         gateway_number = int(gateway_number) if gateway_number else None
     except (ValueError, TypeError):
         gateway_number = None
+    base = {
+        'delay_minutes': delay_minutes,
+        'mqtt_downlink_topic': mqtt_downlink_topic,
+        'gateway_node_number': gateway_number,
+        'stations': [],
+    }
+    try:
+        campus = Campus.objects.get(name=os.getenv('CAMPUS'))
+    except Campus.DoesNotExist:
+        return JsonResponse(base)
+    inner_fence = campus.inner_geofence
+    if not inner_fence:
+        return JsonResponse(base)
+    outer_fence = campus.outer_geofence
+    cutoff = timezone.now() - timedelta(minutes=delay_minutes)
+    six_hours_ago = timezone.now() - timedelta(hours=6)
     qs = Station.objects.filter(
         last_position__isnull=False,
         last_position__updated_at__lt=cutoff,
@@ -93,11 +101,24 @@ def stalenode(request):
     ).exclude(station_type='infrastructure').exclude(station_type='ignore')
     if gateway_number is not None:
         qs = qs.exclude(hardware_number=gateway_number)
+
     def in_outer(lat, lon):
         return outer_fence is None or not outer_fence.outside(lat, lon)
+
     stale = [s for s in qs if s.outside(inner_fence) and in_outer(s.last_position.latitude, s.last_position.longitude)]
-    body = ','.join(str(s.hardware_node) for s in stale)
-    return HttpResponse(body, content_type='text/plain')
+    base['stations'] = [
+        {
+            'id': s.id,
+            'name': s.name,
+            'short_name': s.short_name,
+            'hardware_node': s.hardware_node,
+            'hardware_number': s.hardware_number,
+            'channel': 0,
+            'last_position_updated_at': s.last_position.updated_at.isoformat(),
+        }
+        for s in stale
+    ]
+    return JsonResponse(base)
 
 
 @login_required
