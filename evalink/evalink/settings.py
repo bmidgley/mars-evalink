@@ -24,11 +24,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
+def _csv_env(name, default=''):
+    raw = os.getenv(name, default) or ''
+    return [item.strip() for item in raw.split(',') if item.strip()]
+
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-t)=ssk9r_e_yxde^s2%+j4nz1ol&tk0hr7ge98qgc9%yc&5wxd'
+SECRET_KEY = os.getenv(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-t)=ssk9r_e_yxde^s2%+j4nz1ol&tk0hr7ge98qgc9%yc&5wxd',
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', '1') not in ('0', 'false', 'False', '')
 
 ALLOWED_HOSTS = []
 
@@ -48,6 +56,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -148,7 +157,24 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 STATIC_ROOT = os.getenv('STATIC_ROOT')
 MEDIA_ROOT = os.getenv('MEDIA_ROOT')
 
-CSRF_TRUSTED_ORIGINS = ['https://evalink03.westus3.cloudapp.azure.com', 'https://evalink.archresearch.net']
-ALLOWED_HOSTS = ['evalink03.westus3.cloudapp.azure.com', 'evalink.archresearch.net', 'localhost', '127.0.0.1', 'evalink', 'radmac.local']
+# Whitenoise serves the collected static files directly from the web
+# container so we don't need a separate nginx in front of Django. Use the
+# non-manifest storage so tests (which don't run collectstatic) still work.
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+
+# Defaults preserve the historical hostname list; override with env in
+# production to add the Cloudflare-fronted hostnames.
+_DEFAULT_HOSTS = 'evalink03.westus3.cloudapp.azure.com,evalink.archresearch.net,localhost,127.0.0.1,evalink,radmac.local'
+_DEFAULT_CSRF = 'https://evalink03.westus3.cloudapp.azure.com,https://evalink.archresearch.net'
+
+ALLOWED_HOSTS = _csv_env('DJANGO_ALLOWED_HOSTS', _DEFAULT_HOSTS)
+CSRF_TRUSTED_ORIGINS = _csv_env('DJANGO_CSRF_TRUSTED_ORIGINS', _DEFAULT_CSRF)
+
+# Cloudflare terminates TLS in front of us; trust the X-Forwarded-Proto
+# header so request.is_secure() returns the real value and Django generates
+# https:// absolute URLs.
+if os.getenv('DJANGO_BEHIND_PROXY', '0') in ('1', 'true', 'True'):
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
 
 LOGGING_CONFIG = None

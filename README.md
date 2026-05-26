@@ -91,6 +91,64 @@ sudo systemctl start evalink
 sudo systemctl enable evalink
 ```
 
+## Docker / ZimaOS
+
+A `docker-compose.yml` is provided for one-shot deployment on ZimaOS (or any
+Docker host). It brings up three services on a private bridge network:
+
+| Service | Image                | Exposed?                                         |
+|---------|----------------------|--------------------------------------------------|
+| `db`    | `postgres:16-alpine` | internal only (no host port)                     |
+| `mqtt`  | `eclipse-mosquitto:2`| host port (Cloudflare Spectrum fronts it w/ TLS) |
+| `web`   | built from `Dockerfile` | host port (Cloudflare proxies HTTPS to it)    |
+
+Inside the compose network the web app talks to `db:5432` and `mqtt:1883` in
+the clear. Cloudflare terminates TLS on both public-facing edges:
+
+- HTTPS web -> Cloudflare proxy / Tunnel -> `web:8000` (plain HTTP).
+- MQTT 8883 TLS -> Cloudflare Spectrum -> `mqtt:1883` (plain MQTT).
+
+The Django container also runs the MQTT subscriber thread (started from
+`evalink/__init__.py`), so a single `web` container is enough for both
+serving HTTP and consuming MQTT.
+
+### First run
+
+```
+cp .env.docker.example .env
+# edit .env: set POSTGRES_PASSWORD, MQTT_USER/MQTT_PASSWORD,
+# DJANGO_SECRET_KEY, DJANGO_ALLOWED_HOSTS, DJANGO_CSRF_TRUSTED_ORIGINS
+
+docker compose up -d --build
+docker compose exec web python manage.py createsuperuser
+```
+
+Migrations and `collectstatic` run automatically on container start
+(`RUN_MIGRATIONS=1`, `RUN_COLLECTSTATIC=1`). Static files are served by
+WhiteNoise from the web container, so no separate nginx is required.
+
+### Cloudflare wiring
+
+- Web: point a Cloudflare-proxied DNS record (orange cloud) at the host's
+  public address, or run `cloudflared tunnel` on the host pointing at
+  `http://127.0.0.1:${WEB_HOST_PORT}`. Add every hostname Cloudflare
+  forwards to `DJANGO_ALLOWED_HOSTS` and `DJANGO_CSRF_TRUSTED_ORIGINS`.
+- MQTT: configure a Cloudflare Spectrum app (TCP, TLS, public port 8883)
+  with origin `host:${MQTT_HOST_PORT}` (default `1883`), or use a
+  `cloudflared` TCP tunnel that targets the same address. Anonymous access
+  is disabled in `mosquitto/config/mosquitto.conf`; the broker entrypoint
+  generates `/mosquitto/data/passwd` from `MQTT_USER` / `MQTT_PASSWORD` on
+  every start, so credential changes take effect on `docker compose up`.
+
+### Useful commands
+
+```
+docker compose logs -f web              # tail Django + MQTT subscriber output
+docker compose exec web python manage.py shell
+docker compose exec db psql -U "$POSTGRES_USER" "$POSTGRES_DB"
+docker compose restart web              # picks up new .env values
+```
+
 ## Testing
 
 ### Running Tests Locally
@@ -191,7 +249,7 @@ Put these in `.env` at the repo root (or export them). `load_dotenv()` is called
 
 | Variable | Purpose |
 |----------|---------|
-| `REMOTEID_PORT` | Serial device path (e.g. `/dev/ttyACM2` or `/dev/serial/by-id/...`) |
+| `REMOTEID_PORT` | Serial device path (e.g. `/dev/ttyACM2` or `/dev/serial/by-id/...`). On macOS, prefer `/dev/cu.*` (or let the script rewrite `/dev/tty.*` to `/dev/cu.*`) |
 | `MQTT_TOPIC` | MQTT topic root; positions publish to `{MQTT_TOPIC}/aircraft/{hex}` |
 | `MQTT_SERVER` | MQTT broker hostname |
 
@@ -214,22 +272,24 @@ Install pyserial once: `pip install pyserial` (not listed in `requirements.txt`)
 
 ### Invoke the listener
 
-From the `evalink` directory, with evalink already running (gunicorn or `runserver`) so the MQTT subscriber in `evalink/__init__.py` can store aircraft:
+From the repo root, with evalink already running (gunicorn or `runserver`) so the MQTT subscriber in `evalink/__init__.py` can store aircraft:
 
 ```bash
-cd evalink
 pip install pyserial   # first time only
-python manage.py run_remoteid_feed
+./run_remoteid_feed.py
 ```
 
 Optional overrides:
 
 ```bash
-python manage.py run_remoteid_feed --port /dev/serial/by-id/usb-...
-python manage.py run_remoteid_feed --baud 115200
-python manage.py run_remoteid_feed --topic-root 'msh/MarsSociety/MDRS'
+./run_remoteid_feed.py --port /dev/serial/by-id/usb-...
+./run_remoteid_feed.py --baud 115200
+./run_remoteid_feed.py --topic-root 'msh/MarsSociety/MDRS'
+./run_remoteid_feed.py --verbose
 ```
 
-Stop with Ctrl+C. You should see `Listening for RemoteID on ...` and `Published RemoteID position for ...` when valid JSON lines arrive.
+Stop with Ctrl+C. You should see `Listening for RemoteID on ...` and `RemoteID <hex>: lat=...` when valid JSON lines arrive. Use `--verbose` to print firmware debug lines and skipped JSON.
+
+On macOS, if the listener is silent but a serial monitor shows data, set `REMOTEID_PORT` to the `/dev/cu.usbmodem*` path (not `/dev/tty.usbmodem*`). The script auto-rewrites `tty` to `cu` when both exist.
 
 Flow: ESP32 serial -> `run_remoteid_feed` -> MQTT `{MQTT_TOPIC}/aircraft/{ID}` -> evalink MQTT handler -> map.
