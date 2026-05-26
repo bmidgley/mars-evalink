@@ -173,10 +173,63 @@ meshtastic --ch-set module_settings.position_precision 32 --ch-index 0
 
 ## RemoteID
 
-Connect an esp32s3 to a serial port and run the remoteid sketch to track drones. Configure the serial port name with the environment variable "REMOTEID_PORT" and use baud 115200. An example result from this device looks like:
+Connect an ESP32-S3 to a serial port and flash the RemoteID sketch. The device prints one JSON object per line at 115200 baud. Use `python3 list_serial.py` from the repo root to see which `/dev/ttyACM*` (or `/dev/serial/by-id/...`) path belongs to the board.
+
+An example line from the device:
 
 ```
 {"ID":"18656A000A46", "lat":0.000000, "long":0.000000, "alt":-1000.0, "iso":"2028-01-15T05:09:52Z", "packet_hex":"B716FAFF0DE1F019070012313836353641303236333000000000000000000000000000225068616E746F6D340000000000000000000000000000000000000000000000000000000000000000000000000000000020300011000000000000000000000000000000000000000000320044726F6E6573204944207465737420666C6967687400000000000000000000000000000000000000000000000000000052000000000000000000000000000000000000000000000000"}
 ```
 
-The firmware also produces debug lines that are not JSON (no leading "{") that should be ignored.
+The firmware also emits debug lines that are not JSON (they do not start with `{`); the listener ignores those.
+
+### Minimum environment variables
+
+Put these in `.env` at the repo root (or export them). `load_dotenv()` is called when the command runs.
+
+**Required to run `run_remoteid_feed`:**
+
+| Variable | Purpose |
+|----------|---------|
+| `REMOTEID_PORT` | Serial device path (e.g. `/dev/ttyACM2` or `/dev/serial/by-id/...`) |
+| `MQTT_TOPIC` | MQTT topic root; positions publish to `{MQTT_TOPIC}/aircraft/{hex}` |
+| `MQTT_SERVER` | MQTT broker hostname |
+
+**Usually required** (if your broker uses auth or TLS, same values as the main evalink install):
+
+| Variable | Purpose |
+|----------|---------|
+| `MQTT_PORT` | Broker port (default `1883`) |
+| `MQTT_USER` / `MQTT_PASSWORD` | Broker credentials |
+| `MQTT_TLS` | Set to any non-empty value to enable TLS |
+
+**Required for drones to appear on the map** (not read by `run_remoteid_feed` itself, but required by evalink when it consumes MQTT):
+
+| Variable | Purpose |
+|----------|---------|
+| `CAMPUS` | Must match a `Campus` name in the database; RemoteID aircraft are assigned to this campus |
+| Database vars | Same `HOST`, `NAME`, `PORT`, `DBUSER`, `PASSWORD`, `SSLMODE` as normal evalink |
+
+Install pyserial once: `pip install pyserial` (not listed in `requirements.txt`).
+
+### Invoke the listener
+
+From the `evalink` directory, with evalink already running (gunicorn or `runserver`) so the MQTT subscriber in `evalink/__init__.py` can store aircraft:
+
+```bash
+cd evalink
+pip install pyserial   # first time only
+python manage.py run_remoteid_feed
+```
+
+Optional overrides:
+
+```bash
+python manage.py run_remoteid_feed --port /dev/serial/by-id/usb-...
+python manage.py run_remoteid_feed --baud 115200
+python manage.py run_remoteid_feed --topic-root 'msh/MarsSociety/MDRS'
+```
+
+Stop with Ctrl+C. You should see `Listening for RemoteID on ...` and `Published RemoteID position for ...` when valid JSON lines arrive.
+
+Flow: ESP32 serial -> `run_remoteid_feed` -> MQTT `{MQTT_TOPIC}/aircraft/{ID}` -> evalink MQTT handler -> map.
