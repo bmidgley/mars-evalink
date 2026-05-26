@@ -14,4 +14,5 @@ python-dotenv==1.0.0
 pytz==2023.3.post1
 sqlparse==0.4.4
 typing_extensions==4.9.0
+whitenoise==6.7.0
 xmltodict==0.13.0

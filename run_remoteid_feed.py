@@ -24,6 +24,7 @@ import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 
 
@@ -52,6 +53,25 @@ def _env_truthy(name: str) -> bool:
         return False
     v = v.strip().lower()
     return v not in ("", "0", "false", "no", "off")
+
+
+def _normalize_topic_root(topic: str) -> str:
+    """Match evalink mqtt subscriber topic layout (no leading/trailing slashes)."""
+    return topic.strip().strip("/")
+
+
+def _aircraft_topic(topic_root: str, hex_code: str) -> str:
+    return f"{topic_root}/aircraft/{hex_code}"
+
+
+def _env_or_cli(env_name: str, cli_value: str | None) -> tuple[str, str | None]:
+    """Prefer dotenv/environment over CLI; return (value, ignored_cli_value_or_none)."""
+    env_val = (_env(env_name) or "").strip()
+    cli_val = (cli_value or "").strip()
+    if env_val:
+        ignored = cli_val if cli_val and cli_val != env_val else None
+        return env_val, ignored
+    return cli_val, None
 
 
 def _location_from_message(message: dict) -> tuple[float | None, float | None, float | None]:
@@ -83,13 +103,39 @@ def _format_location(lat: float | None, lon: float | None, alt: float | None) ->
     return ", ".join(parts)
 
 
+def _normalize_serial_port(port: str) -> str:
+    """On macOS, use /dev/cu.* for host-initiated reads (not /dev/tty.*)."""
+    if sys.platform != "darwin" or "/dev/tty." not in port:
+        return port
+    cu = port.replace("/dev/tty.", "/dev/cu.", 1)
+    if Path(cu).exists():
+        return cu
+    return port
+
+
+def _open_serial(port: str, baud: int):
+    """Open serial without toggling DTR/RTS (avoids ESP32 reset on connect)."""
+    import serial as _serial
+
+    ser = _serial.Serial()
+    ser.port = port
+    ser.baudrate = baud
+    ser.timeout = 1
+    ser.dsrdtr = False
+    ser.rtscts = False
+    ser.dtr = False
+    ser.rts = False
+    ser.open()
+    return ser
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Listen to RemoteID serial and publish to MQTT")
     p.add_argument(
         "--port",
         dest="port",
         default=None,
-        help="Serial port path (defaults to REMOTEID_PORT env var)",
+        help="Serial port path (only used if REMOTEID_PORT is not set in .env / environment)",
     )
     p.add_argument(
         "--baud",
@@ -102,7 +148,7 @@ def parse_args() -> argparse.Namespace:
         "--topic-root",
         dest="topic_root",
         default=None,
-        help="MQTT topic root (defaults to MQTT_TOPIC env var)",
+        help="MQTT topic root (only used if MQTT_TOPIC is not set in .env / environment)",
     )
 
     p.add_argument(
@@ -143,6 +189,11 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Enable MQTT TLS (overrides MQTT_TLS env var); any non-empty value enables it",
     )
+    p.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Log non-JSON serial lines and skipped JSON (for debugging)",
+    )
     return p.parse_args()
 
 
@@ -153,19 +204,63 @@ def main() -> int:
 
     args = parse_args()
 
-    port = (args.port or _env("REMOTEID_PORT") or "").strip()
+    env_port = (_env("REMOTEID_PORT") or "").strip()
+    cli_port = (args.port or "").strip()
+    port = env_port or cli_port
+    if env_port and cli_port and env_port != cli_port:
+        print(
+            f"Using REMOTEID_PORT={env_port} from environment (--port {cli_port} ignored)",
+            file=sys.stderr,
+        )
     baud = args.baud
     if baud is None:
         baud = int(_env("REMOTEID_BAUD", "115200"))
 
-    topic_root = (args.topic_root or _env("MQTT_TOPIC") or "").strip()
-    mqtt_server = (args.mqtt_server or _env("MQTT_SERVER") or "").strip()
-    mqtt_port = args.mqtt_port or int(_env("MQTT_PORT", "1883"))
-    mqtt_keepalive = args.mqtt_keepalive or int(_env("MQTT_KEEPALIVE", "60"))
-    mqtt_user = args.mqtt_user if args.mqtt_user is not None else _env("MQTT_USER")
-    mqtt_password = (
-        args.mqtt_password if args.mqtt_password is not None else _env("MQTT_PASSWORD")
-    )
+    topic_root, ignored_topic = _env_or_cli("MQTT_TOPIC", args.topic_root)
+    topic_root = _normalize_topic_root(topic_root)
+    if ignored_topic:
+        print(
+            f'Using MQTT_TOPIC={topic_root!r} from environment (--topic-root {ignored_topic!r} ignored)',
+            file=sys.stderr,
+        )
+
+    mqtt_server, ignored_server = _env_or_cli("MQTT_SERVER", args.mqtt_server)
+    if ignored_server:
+        print(
+            f"Using MQTT_SERVER={mqtt_server!r} from environment (--mqtt-server ignored)",
+            file=sys.stderr,
+        )
+
+    env_port = _env("MQTT_PORT")
+    if env_port:
+        mqtt_port = int(env_port.strip())
+        if args.mqtt_port is not None and args.mqtt_port != mqtt_port:
+            print(
+                f"Using MQTT_PORT={mqtt_port} from environment (--mqtt-port ignored)",
+                file=sys.stderr,
+            )
+    else:
+        mqtt_port = args.mqtt_port or 1883
+
+    env_keepalive = _env("MQTT_KEEPALIVE")
+    if env_keepalive:
+        mqtt_keepalive = int(env_keepalive.strip())
+    else:
+        mqtt_keepalive = args.mqtt_keepalive or 60
+
+    env_user = _env("MQTT_USER")
+    if env_user is not None:
+        mqtt_user = env_user
+        if args.mqtt_user is not None and args.mqtt_user != env_user:
+            print("Using MQTT_USER from environment (--mqtt-user ignored)", file=sys.stderr)
+    else:
+        mqtt_user = args.mqtt_user
+
+    env_password = _env("MQTT_PASSWORD")
+    if env_password is not None:
+        mqtt_password = env_password
+    else:
+        mqtt_password = args.mqtt_password
 
     if args.mqtt_tls is not None:
         mqtt_tls = bool(args.mqtt_tls)
@@ -175,8 +270,13 @@ def main() -> int:
     if not port:
         print("ERROR: Set REMOTEID_PORT or pass --port.", file=sys.stderr)
         return 2
+
+    raw_port = port
+    port = _normalize_serial_port(port)
+    if port != raw_port:
+        print(f"Using {port} (macOS call-out device; {raw_port} often receives no data)")
     if not topic_root:
-        print("ERROR: Set MQTT_TOPIC or pass --topic-root.", file=sys.stderr)
+        print("ERROR: Set MQTT_TOPIC in .env / environment or pass --topic-root.", file=sys.stderr)
         return 2
     if not mqtt_server:
         print("ERROR: Set MQTT_SERVER in environment.", file=sys.stderr)
@@ -195,6 +295,8 @@ def main() -> int:
         return 2
 
     # Import-time networking is avoided; we connect only after env/args validation.
+    publish_pattern = _aircraft_topic(topic_root, "<hex>")
+    print(f"MQTT topic prefix from MQTT_TOPIC: {topic_root!r}")
     print(f"Connecting to MQTT {mqtt_server}:{mqtt_port} (TLS enabled: {mqtt_tls})")
     client = mqtt.Client()
     if mqtt_tls:
@@ -210,52 +312,86 @@ def main() -> int:
 
     client.loop_start()
 
+    for _ in range(50):
+        if client.is_connected():
+            break
+        time.sleep(0.1)
+    if not client.is_connected():
+        print("ERROR: MQTT broker did not acknowledge connection in time.", file=sys.stderr)
+        client.loop_stop()
+        return 1
+    print(f"MQTT connected; will publish to {publish_pattern}")
+
     print(f"Listening for RemoteID on {port} @ {baud}")
-    print(f'Publishing aircraft messages to "{topic_root}/aircraft/<hex>"')
+
+    verbose = args.verbose
 
     try:
-        with serial.Serial(port=port, baudrate=baud, timeout=1) as ser:
-            while True:
-                raw = ser.readline()
-                if not raw:
-                    continue
+        ser = _open_serial(port, baud)
+    except serial.SerialException as e:
+        print(f"ERROR: Cannot open serial port {port}: {e!r}", file=sys.stderr)
+        return 1
 
-                line = raw.decode("utf-8", errors="replace").strip()
-                if not line:
-                    continue
+    try:
+        while True:
+            raw = ser.readline()
+            if not raw:
+                continue
 
-                # Firmware emits debug lines; README says only JSON lines start with "{"
-                if not line.startswith("{"):
-                    continue
+            line = raw.decode("utf-8", errors="replace").strip()
+            if not line:
+                continue
 
-                try:
-                    message = json.loads(line)
-                except json.JSONDecodeError:
-                    # Skip bad JSON without spamming.
-                    continue
+            # Firmware emits debug lines; README says only JSON lines start with "{"
+            if not line.lstrip().startswith("{"):
+                if verbose:
+                    print(f"[serial] {line}", flush=True)
+                continue
+            if line.lstrip() != line:
+                line = line.lstrip()
 
-                if not isinstance(message, dict):
-                    continue
+            try:
+                message = json.loads(line)
+            except json.JSONDecodeError:
+                if verbose:
+                    print(f"[skip] bad JSON: {line[:200]}", flush=True)
+                continue
 
-                raw_hex_code = str(message.get("ID") or "").strip()
-                if not raw_hex_code:
-                    continue
-                if re.fullmatch(r"[0-9A-Fa-f]+", raw_hex_code) is None:
-                    continue
+            if not isinstance(message, dict):
+                if verbose:
+                    print(f"[skip] JSON is not an object", flush=True)
+                continue
 
-                hex_code = raw_hex_code.upper()
-                topic = f"{topic_root}/aircraft/{hex_code}"
+            raw_hex_code = str(message.get("ID") or "").strip()
+            if not raw_hex_code:
+                if verbose:
+                    print(f"[skip] no ID in message", flush=True)
+                continue
+            if re.fullmatch(r"[0-9A-Fa-f]+", raw_hex_code) is None:
+                if verbose:
+                    print(f'[skip] invalid ID: "{raw_hex_code}"', flush=True)
+                continue
 
-                payload = dict(message)
-                payload["source"] = "remoteid"
-                client.publish(topic, json.dumps(payload, separators=(",", ":")))
+            hex_code = raw_hex_code.upper()
+            topic = _aircraft_topic(topic_root, hex_code)
 
+            payload = dict(message)
+            payload["source"] = "remoteid"
+            client.publish(topic, json.dumps(payload, separators=(",", ":")))
+
+            if verbose:
                 lat, lon, alt = _location_from_message(message)
                 loc = _format_location(lat, lon, alt)
-                print(f"RemoteID {hex_code}: {loc} -> {topic}")
+                print(f"RemoteID {hex_code}: {loc} -> {topic}", flush=True)
+            else:
+                print(".", end="", flush=True)
     except KeyboardInterrupt:
         print("\nStopping RemoteID feed.")
     finally:
+        try:
+            ser.close()
+        except Exception:
+            pass
         try:
             client.loop_stop()
             client.disconnect()
