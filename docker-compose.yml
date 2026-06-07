@@ -1,0 +1,145 @@
+# docker-compose for evalink on ZimaOS (or any Docker host).
+#
+# Topology:
+#   - db        Postgres, on the internal compose network only (no host port).
+#   - mqtt      Mosquitto, exposed on the host so Cloudflare Spectrum can
+#               front it with TLS on the public side and forward plain MQTT
+#               (port 1883) to this broker.
+#   - web       Django + Gunicorn, exposed on the host so Cloudflare can
+#               proxy HTTPS to it on plain HTTP.
+#
+# All cross-service traffic stays on the "evalink" docker network and uses
+# service names (db, mqtt) as hostnames. Cloudflare terminates TLS for both
+# the web (HTTPS) and the broker (Spectrum), so internally everything is
+# plain HTTP / plain MQTT.
+#
+# Copy .env.docker.example to .env and edit before "docker compose up -d".
+
+name: evalink
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-evalink}
+      POSTGRES_USER: ${POSTGRES_USER:-evalink}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - evalink
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "${POSTGRES_USER:-evalink}" -d "${POSTGRES_DB:-evalink}"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    environment:
+      MQTT_USER: ${MQTT_USER:?MQTT_USER must be set}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:?MQTT_PASSWORD must be set}
+    # Plain MQTT on 1883 only. Cloudflare Spectrum provides TLS on the public
+    # side (typically 8883) and forwards to this port. Bind to all interfaces
+    # so Cloudflare/Spectrum (or cloudflared) can reach it.
+    ports:
+      - "${MQTT_BIND_ADDR:-0.0.0.0}:${MQTT_HOST_PORT:-1883}:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config:ro
+      - ./mosquitto/entrypoint.sh:/usr/local/bin/mosquitto-entrypoint.sh:ro
+      - mqtt_data:/mosquitto/data
+      - mqtt_log:/mosquitto/log
+    entrypoint: ["/usr/local/bin/mosquitto-entrypoint.sh"]
+    command: ["mosquitto", "-c", "/mosquitto/config/mosquitto.conf"]
+    networks:
+      - evalink
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h 127.0.0.1 -p 1883 -u \"$$MQTT_USER\" -P \"$$MQTT_PASSWORD\" -t '$$SYS/broker/uptime' -C 1 -W 3 >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: evalink:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      mqtt:
+        condition: service_started
+    environment:
+      # Database (settings.py reads these names directly).
+      HOST: db
+      PORT: 5432
+      NAME: ${POSTGRES_DB:-evalink}
+      DBUSER: ${POSTGRES_USER:-evalink}
+      PASSWORD: ${POSTGRES_PASSWORD}
+      SSLMODE: disable
+
+      # MQTT broker (talk to it inside the docker network on plain 1883;
+      # Cloudflare Spectrum is only relevant for outside clients).
+      MQTT_SERVER: mqtt
+      MQTT_PORT: 1883
+      MQTT_KEEPALIVE: ${MQTT_KEEPALIVE:-60}
+      MQTT_USER: ${MQTT_USER}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
+      MQTT_TLS: ""
+      MQTT_TOPIC: ${MQTT_TOPIC:-msh/Development}
+      MQTT_NODE_NUMBER: ${MQTT_NODE_NUMBER:-}
+
+      # Django runtime configuration. Cloudflare terminates TLS, so we tell
+      # Django to trust X-Forwarded-Proto and add the proxy hostnames to the
+      # allowed/CSRF lists.
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+      DJANGO_BEHIND_PROXY: ${DJANGO_BEHIND_PROXY:-1}
+
+      # Static / media inside the container (mounted as volumes below).
+      STATIC_ROOT: /app/static
+      MEDIA_ROOT: /app/media
+
+      # Run db migrations and collect static on container start.
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
+      RUN_COLLECTSTATIC: ${RUN_COLLECTSTATIC:-1}
+
+      # Gunicorn tuning.
+      WEB_PORT: 8000
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
+      GUNICORN_THREADS: ${GUNICORN_THREADS:-2}
+
+      # Optional integrations.
+      CAMPUS: ${CAMPUS:-MDRS}
+      APRS_CALLSIGN: ${APRS_CALLSIGN:-}
+      APRS_PASSCODE: ${APRS_PASSCODE:-}
+      APRS_FI_API_KEY: ${APRS_FI_API_KEY:-}
+    volumes:
+      - web_static:/app/static
+      - web_media:/app/media
+    ports:
+      # Cloudflare (or cloudflared tunnel) proxies HTTPS to this plain HTTP
+      # port. Bind to localhost by default so the broker is the only thing
+      # publicly reachable until you front the web with a tunnel/proxy.
+      - "${WEB_BIND_ADDR:-127.0.0.1}:${WEB_HOST_PORT:-8000}:8000"
+    networks:
+      - evalink
+
+networks:
+  evalink:
+    driver: bridge
+
+volumes:
+  db_data:
+  mqtt_data:
+  mqtt_log:
+  web_static:
+  web_media:
