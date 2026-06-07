@@ -1,5 +1,19 @@
 #!/bin/sh
 set -e
+
+# ZimaOS / no-build compose: install Python deps once on first container start.
+# The repo is bind-mounted at /app; the marker lives on the host filesystem.
+bootstrap_marker="/app/.runtime_bootstrap_done"
+if [ ! -f "$bootstrap_marker" ]; then
+    echo "docker-entrypoint: first boot, installing runtime packages..."
+    apt-get update
+    apt-get install -y --no-install-recommends postgresql-client
+    rm -rf /var/lib/apt/lists/*
+    pip install --no-cache-dir -r /app/requirements.runtime.txt
+    touch "$bootstrap_marker"
+    echo "docker-entrypoint: runtime bootstrap complete"
+fi
+
 cd /app/evalink
 
 # Wait for the database to accept connections before running anything that

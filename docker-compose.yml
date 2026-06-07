@@ -1,5 +1,9 @@
 # docker-compose for evalink on ZimaOS (or any Docker host).
 #
+# ZimaOS/CasaOS requires long-form port mappings (target/published/protocol)
+# and an x-casaos block; short forms like "0.0.0.0:1883:1883" show Host=0
+# and Container=NaN in the import UI.
+#
 # Topology:
 #   - db        Postgres, on the internal compose network only (no host port).
 #   - mqtt      Mosquitto, exposed on the host so Cloudflare Spectrum can
@@ -8,25 +12,24 @@
 #   - web       Django + Gunicorn, exposed on the host so Cloudflare can
 #               proxy HTTPS to it on plain HTTP.
 #
-# All cross-service traffic stays on the "evalink" docker network and uses
-# service names (db, mqtt) as hostnames. Cloudflare terminates TLS for both
-# the web (HTTPS) and the broker (Spectrum), so internally everything is
-# plain HTTP / plain MQTT.
-#
-# Copy .env.docker.example to .env and edit before "docker compose up -d".
+# Copy .env.docker.example to .env and edit before installing.
+# On ZimaOS, place the repo under /DATA/AppData/evalink so bind mounts resolve.
 
 name: evalink
 
 services:
   db:
     image: postgres:16-alpine
+    container_name: evalink-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-evalink}
       POSTGRES_USER: ${POSTGRES_USER:-evalink}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - type: volume
+        source: db_data
+        target: /var/lib/postgresql/data
     networks:
       - evalink
     healthcheck:
@@ -39,20 +42,31 @@ services:
 
   mqtt:
     image: eclipse-mosquitto:2
+    container_name: evalink-mqtt
     restart: unless-stopped
     environment:
       MQTT_USER: ${MQTT_USER:?MQTT_USER must be set}
       MQTT_PASSWORD: ${MQTT_PASSWORD:?MQTT_PASSWORD must be set}
-    # Plain MQTT on 1883 only. Cloudflare Spectrum provides TLS on the public
-    # side (typically 8883) and forwards to this port. Bind to all interfaces
-    # so Cloudflare/Spectrum (or cloudflared) can reach it.
     ports:
-      - "${MQTT_BIND_ADDR:-0.0.0.0}:${MQTT_HOST_PORT:-1883}:1883"
+      - target: 1883
+        host_ip: ${MQTT_BIND_ADDR:-0.0.0.0}
+        published: "${MQTT_HOST_PORT:-1883}"
+        protocol: tcp
     volumes:
-      - ./mosquitto/config:/mosquitto/config:ro
-      - ./mosquitto/entrypoint.sh:/usr/local/bin/mosquitto-entrypoint.sh:ro
-      - mqtt_data:/mosquitto/data
-      - mqtt_log:/mosquitto/log
+      - type: bind
+        source: /DATA/AppData/evalink/mosquitto/config
+        target: /mosquitto/config
+        read_only: true
+      - type: bind
+        source: /DATA/AppData/evalink/mosquitto/entrypoint.sh
+        target: /usr/local/bin/mosquitto-entrypoint.sh
+        read_only: true
+      - type: volume
+        source: mqtt_data
+        target: /mosquitto/data
+      - type: volume
+        source: mqtt_log
+        target: /mosquitto/log
     entrypoint: ["/usr/local/bin/mosquitto-entrypoint.sh"]
     command: ["mosquitto", "-c", "/mosquitto/config/mosquitto.conf"]
     networks:
@@ -63,20 +77,30 @@ services:
       timeout: 10s
       retries: 5
       start_period: 10s
+    x-casaos:
+      ports:
+        - container: "1883"
+          description:
+            en_us: Plain MQTT (Cloudflare Spectrum terminates TLS on 8883)
 
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: evalink:latest
+    # ZimaOS cannot import custom build contexts; use the official Python image
+    # and bind-mount the repo. docker-entrypoint.sh pip-installs on first boot.
+    image: python:3.12-slim-bookworm
+    container_name: evalink-web
     restart: unless-stopped
+    working_dir: /app/evalink
+    entrypoint: ["/bin/sh", "/app/docker-entrypoint.sh"]
+    command: ["gunicorn"]
     depends_on:
       db:
         condition: service_healthy
       mqtt:
         condition: service_started
     environment:
-      # Database (settings.py reads these names directly).
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      DJANGO_SETTINGS_MODULE: evalink.settings
       HOST: db
       PORT: 5432
       NAME: ${POSTGRES_DB:-evalink}
@@ -84,8 +108,6 @@ services:
       PASSWORD: ${POSTGRES_PASSWORD}
       SSLMODE: disable
 
-      # MQTT broker (talk to it inside the docker network on plain 1883;
-      # Cloudflare Spectrum is only relevant for outside clients).
       MQTT_SERVER: mqtt
       MQTT_PORT: 1883
       MQTT_KEEPALIVE: ${MQTT_KEEPALIVE:-60}
@@ -95,43 +117,48 @@ services:
       MQTT_TOPIC: ${MQTT_TOPIC:-msh/Development}
       MQTT_NODE_NUMBER: ${MQTT_NODE_NUMBER:-}
 
-      # Django runtime configuration. Cloudflare terminates TLS, so we tell
-      # Django to trust X-Forwarded-Proto and add the proxy hostnames to the
-      # allowed/CSRF lists.
       DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
       DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
       DJANGO_BEHIND_PROXY: ${DJANGO_BEHIND_PROXY:-1}
 
-      # Static / media inside the container (mounted as volumes below).
       STATIC_ROOT: /app/static
       MEDIA_ROOT: /app/media
 
-      # Run db migrations and collect static on container start.
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
       RUN_COLLECTSTATIC: ${RUN_COLLECTSTATIC:-1}
 
-      # Gunicorn tuning.
       WEB_PORT: 8000
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
       GUNICORN_THREADS: ${GUNICORN_THREADS:-2}
 
-      # Optional integrations.
       CAMPUS: ${CAMPUS:-MDRS}
       APRS_CALLSIGN: ${APRS_CALLSIGN:-}
       APRS_PASSCODE: ${APRS_PASSCODE:-}
       APRS_FI_API_KEY: ${APRS_FI_API_KEY:-}
     volumes:
-      - web_static:/app/static
-      - web_media:/app/media
+      - type: bind
+        source: /DATA/AppData/evalink
+        target: /app
+      - type: volume
+        source: web_static
+        target: /app/static
+      - type: volume
+        source: web_media
+        target: /app/media
     ports:
-      # Cloudflare (or cloudflared tunnel) proxies HTTPS to this plain HTTP
-      # port. Bind to localhost by default so the broker is the only thing
-      # publicly reachable until you front the web with a tunnel/proxy.
-      - "${WEB_BIND_ADDR:-127.0.0.1}:${WEB_HOST_PORT:-8000}:8000"
+      - target: 8000
+        host_ip: ${WEB_BIND_ADDR:-127.0.0.1}
+        published: "${WEB_HOST_PORT:-18000}"
+        protocol: tcp
     networks:
       - evalink
+    x-casaos:
+      ports:
+        - container: "8000"
+          description:
+            en_us: Django web UI (plain HTTP; Cloudflare proxies HTTPS)
 
 networks:
   evalink:
@@ -143,3 +170,29 @@ volumes:
   mqtt_log:
   web_static:
   web_media:
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: web
+  author: self
+  category: self
+  hostname: ""
+  icon: https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@main/Apps/PostgreSQL/icon.png
+  index: /
+  is_uncontrolled: false
+  port_map: "${WEB_HOST_PORT:-18000}"
+  scheme: http
+  store_app_id: evalink
+  title:
+    custom: evalink
+    en_us: evalink
+  tips:
+    before_install:
+      en_us: |
+        Copy the repo to `/DATA/AppData/evalink` before installing (rsync or git clone).
+        Create `/DATA/AppData/evalink/.env` from `.env.docker.example` and set
+        POSTGRES_PASSWORD, MQTT_USER/MQTT_PASSWORD, and DJANGO_SECRET_KEY.
+        First web container start installs Python packages (may take a few minutes).
+        After install: `docker compose exec web python manage.py createsuperuser`
