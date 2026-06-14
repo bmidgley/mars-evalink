@@ -114,7 +114,7 @@ def publish_position_bus_message(message, hardware_node):
             client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         except (AttributeError, TypeError):
             client = mqtt.Client()
-        if os.getenv("MQTT_TLS"):
+        if os.getenv("MQTT_TLS") == "1":
             client.tls_set()
         user = os.getenv("MQTT_USER")
         if user is not None:
