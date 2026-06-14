@@ -12,7 +12,11 @@
 #   - web       Django + Gunicorn, exposed on the host so Cloudflare can
 #               proxy HTTPS to it on plain HTTP.
 #
-# Copy .env.docker.example to .env and edit before installing.
+# Environment: create /DATA/AppData/evalink/.env from .env.docker.example.
+# CasaOS does not load a sibling .env when importing compose; each service
+# uses env_file with that absolute path instead of ${VAR} interpolation.
+# Host bind IPs in ports: are literals (CasaOS cannot interpolate .env there).
+#
 # On ZimaOS, place the repo under /DATA/AppData/evalink so bind mounts resolve.
 
 name: evalink
@@ -22,10 +26,11 @@ services:
     image: postgres:16-alpine
     container_name: evalink-db
     restart: unless-stopped
+    env_file:
+      - /DATA/AppData/evalink/.env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-evalink}
-      POSTGRES_USER: ${POSTGRES_USER:-evalink}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: evalink
+      POSTGRES_USER: evalink
     volumes:
       - type: volume
         source: db_data
@@ -35,7 +40,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - pg_isready -U "${POSTGRES_USER:-evalink}" -d "${POSTGRES_DB:-evalink}"
+        - pg_isready -U evalink -d evalink
       interval: 10s
       timeout: 5s
       retries: 10
@@ -44,13 +49,12 @@ services:
     image: eclipse-mosquitto:2
     container_name: evalink-mqtt
     restart: unless-stopped
-    environment:
-      MQTT_USER: ${MQTT_USER:?MQTT_USER must be set}
-      MQTT_PASSWORD: ${MQTT_PASSWORD:?MQTT_PASSWORD must be set}
+    env_file:
+      - /DATA/AppData/evalink/.env
     ports:
       - target: 1883
-        host_ip: ${MQTT_BIND_ADDR:-0.0.0.0}
-        published: "${MQTT_HOST_PORT:-1883}"
+        host_ip: 0.0.0.0
+        published: "1883"
         protocol: tcp
     volumes:
       - type: bind
@@ -72,7 +76,9 @@ services:
     networks:
       - evalink
     healthcheck:
-      test: ["CMD-SHELL", "mosquitto_sub -h 127.0.0.1 -p 1883 -u \"$$MQTT_USER\" -P \"$$MQTT_PASSWORD\" -t '$$SYS/broker/uptime' -C 1 -W 3 >/dev/null 2>&1"]
+      test:
+        - CMD-SHELL
+        - mosquitto_sub -h 127.0.0.1 -p 1883 -u "$$MQTT_USER" -P "$$MQTT_PASSWORD" -t '$$SYS/broker/uptime' -C 1 -W 3 >/dev/null 2>&1 || exit 1
       interval: 30s
       timeout: 10s
       retries: 5
@@ -97,46 +103,23 @@ services:
         condition: service_healthy
       mqtt:
         condition: service_started
+    env_file:
+      - /DATA/AppData/evalink/.env
     environment:
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUNBUFFERED: "1"
       DJANGO_SETTINGS_MODULE: evalink.settings
       HOST: db
-      PORT: 5432
-      NAME: ${POSTGRES_DB:-evalink}
-      DBUSER: ${POSTGRES_USER:-evalink}
-      PASSWORD: ${POSTGRES_PASSWORD}
+      PORT: "5432"
+      NAME: evalink
+      DBUSER: evalink
       SSLMODE: disable
-
       MQTT_SERVER: mqtt
-      MQTT_PORT: 1883
-      MQTT_KEEPALIVE: ${MQTT_KEEPALIVE:-60}
-      MQTT_USER: ${MQTT_USER}
-      MQTT_PASSWORD: ${MQTT_PASSWORD}
+      MQTT_PORT: "1883"
       MQTT_TLS: ""
-      MQTT_TOPIC: ${MQTT_TOPIC:-msh/Development}
-      MQTT_NODE_NUMBER: ${MQTT_NODE_NUMBER:-}
-
-      DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set}
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
-      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
-      DJANGO_BEHIND_PROXY: ${DJANGO_BEHIND_PROXY:-1}
-
       STATIC_ROOT: /app/static
       MEDIA_ROOT: /app/media
-
-      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
-      RUN_COLLECTSTATIC: ${RUN_COLLECTSTATIC:-1}
-
-      WEB_PORT: 8000
-      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
-      GUNICORN_THREADS: ${GUNICORN_THREADS:-2}
-
-      CAMPUS: ${CAMPUS:-MDRS}
-      APRS_CALLSIGN: ${APRS_CALLSIGN:-}
-      APRS_PASSCODE: ${APRS_PASSCODE:-}
-      APRS_FI_API_KEY: ${APRS_FI_API_KEY:-}
+      WEB_PORT: "8000"
     volumes:
       - type: bind
         source: /DATA/AppData/evalink
@@ -149,8 +132,8 @@ services:
         target: /app/media
     ports:
       - target: 8000
-        host_ip: ${WEB_BIND_ADDR:-127.0.0.1}
-        published: "${WEB_HOST_PORT:-18000}"
+        host_ip: 127.0.0.1
+        published: "18000"
         protocol: tcp
     networks:
       - evalink
@@ -182,7 +165,7 @@ x-casaos:
   icon: https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@main/Apps/PostgreSQL/icon.png
   index: /
   is_uncontrolled: false
-  port_map: "${WEB_HOST_PORT:-18000}"
+  port_map: "18000"
   scheme: http
   store_app_id: evalink
   title:
@@ -193,6 +176,6 @@ x-casaos:
       en_us: |
         Copy the repo to `/DATA/AppData/evalink` before installing (rsync or git clone).
         Create `/DATA/AppData/evalink/.env` from `.env.docker.example` and set
-        POSTGRES_PASSWORD, MQTT_USER/MQTT_PASSWORD, and DJANGO_SECRET_KEY.
+        POSTGRES_PASSWORD, PASSWORD, MQTT_USER/MQTT_PASSWORD, and DJANGO_SECRET_KEY.
         First web container start installs Python packages (may take a few minutes).
         After install: `docker compose exec web python manage.py createsuperuser`

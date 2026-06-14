@@ -96,7 +96,7 @@ DATABASES = {
         'NAME': os.getenv('NAME'),
         'PORT': os.getenv('PORT'),
         'USER': os.getenv('DBUSER'),
-        'PASSWORD':  os.getenv('PASSWORD').strip(),
+        'PASSWORD': (os.getenv('PASSWORD') or os.getenv('POSTGRES_PASSWORD') or '').strip(),
         'OPTIONS': {'sslmode': os.getenv('SSLMODE')},
     }
 }
