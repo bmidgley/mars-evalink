@@ -1,11 +1,18 @@
 #!/bin/sh
 set -e
 
-# ZimaOS / no-build compose: install Python deps once on first container start.
-# The repo is bind-mounted at /app; the marker lives on the host filesystem.
-bootstrap_marker="/app/.runtime_bootstrap_done"
-if [ ! -f "$bootstrap_marker" ]; then
-    echo "docker-entrypoint: first boot, installing runtime packages..."
+# ZimaOS / no-build compose: install Python deps once per container filesystem.
+# Do not store the bootstrap marker on /app (bind-mounted from the host): a
+# recreated container would skip pip install while site-packages are empty.
+bootstrap_marker="/var/lib/evalink/.runtime_bootstrap_done"
+bootstrap_needed=1
+if [ -f "$bootstrap_marker" ] && python -c "import django" >/dev/null 2>&1; then
+    bootstrap_needed=0
+fi
+
+if [ "$bootstrap_needed" -eq 1 ]; then
+    echo "docker-entrypoint: installing runtime packages..."
+    mkdir -p /var/lib/evalink
     apt-get update
     apt-get install -y --no-install-recommends postgresql-client
     rm -rf /var/lib/apt/lists/*
