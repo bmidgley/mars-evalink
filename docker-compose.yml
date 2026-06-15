@@ -57,9 +57,14 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
     volumes:
+      - type: bind
+        source: /DATA/AppData/evalink/pgadmin/entrypoint.sh
+        target: /usr/local/bin/pgadmin-entrypoint.sh
+        read_only: true
       - type: volume
         source: pgadmin_data
         target: /var/lib/pgadmin
+    entrypoint: ["/usr/local/bin/pgadmin-entrypoint.sh"]
     ports:
       - target: 80
         host_ip: 0.0.0.0
@@ -151,6 +156,7 @@ services:
       STATIC_ROOT: /app/static
       MEDIA_ROOT: /app/media
       WEB_PORT: "8000"
+      DJANGO_ALLOW_LAN: "1"
     volumes:
       - type: bind
         source: /DATA/AppData/evalink
@@ -208,10 +214,11 @@ x-casaos:
       en_us: |
         Copy the repo to `/DATA/AppData/evalink` before installing (rsync or git clone).
         Create `/DATA/AppData/evalink/.env` from `.env.docker.example` and set
-        POSTGRES_PASSWORD, PASSWORD, PGADMIN_DEFAULT_PASSWORD, MQTT_USER/MQTT_PASSWORD,
+        POSTGRES_PASSWORD, PASSWORD, MQTT_USER/MQTT_PASSWORD,
         and DJANGO_SECRET_KEY.
         Evalink web UI: `http://<host>:18000`. pgAdmin: `http://<host>:18001`
-        (login with PGADMIN_DEFAULT_EMAIL / PGADMIN_DEFAULT_PASSWORD; register server
-        host `db`, port `5432`, user `evalink`, database `evalink`).
+        (login email `admin@evalink.local`, password = PGADMIN_DEFAULT_PASSWORD or
+        POSTGRES_PASSWORD if unset; register server host `db`, port `5432`, user
+        `evalink`, database `evalink`).
         First web container start installs Python packages (may take a few minutes).
         After install: `docker compose exec web python manage.py createsuperuser`
