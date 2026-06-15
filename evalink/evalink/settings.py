@@ -168,6 +168,9 @@ _DEFAULT_HOSTS = 'evalink03.westus3.cloudapp.azure.com,evalink.archresearch.net,
 _DEFAULT_CSRF = 'https://evalink03.westus3.cloudapp.azure.com,https://evalink.archresearch.net'
 
 ALLOWED_HOSTS = _csv_env('DJANGO_ALLOWED_HOSTS', _DEFAULT_HOSTS)
+# ZimaOS / LAN access by IP (e.g. http://192.168.x.x:18000) without listing every IP.
+if os.getenv('DJANGO_ALLOW_LAN', '0') in ('1', 'true', 'True') and '*' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ALLOWED_HOSTS + ['*']
 CSRF_TRUSTED_ORIGINS = _csv_env('DJANGO_CSRF_TRUSTED_ORIGINS', _DEFAULT_CSRF)
 
 # Cloudflare terminates TLS in front of us; trust the X-Forwarded-Proto
