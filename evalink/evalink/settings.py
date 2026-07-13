@@ -61,6 +61,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'evalink.middleware.cloudflare_access.CloudflareAccessMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -179,5 +180,13 @@ CSRF_TRUSTED_ORIGINS = _csv_env('DJANGO_CSRF_TRUSTED_ORIGINS', _DEFAULT_CSRF)
 if os.getenv('DJANGO_BEHIND_PROXY', '0') in ('1', 'true', 'True'):
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     USE_X_FORWARDED_HOST = True
+
+# Cloudflare Access (Zero Trust) SSO: validate Cf-Access-Jwt-Assertion and
+# auto-provision Django users. Requires an Access application on the hostname.
+CLOUDFLARE_ACCESS_ENABLED = os.getenv('CLOUDFLARE_ACCESS_ENABLED', '0') in (
+    '1', 'true', 'True',
+)
+CLOUDFLARE_ACCESS_TEAM_DOMAIN = os.getenv('CLOUDFLARE_ACCESS_TEAM_DOMAIN', '').strip()
+CLOUDFLARE_ACCESS_AUD = os.getenv('CLOUDFLARE_ACCESS_AUD', '').strip()
 
 LOGGING_CONFIG = None
