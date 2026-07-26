@@ -215,10 +215,12 @@ x-casaos:
       en_us: |
         Copy the repo to `/DATA/AppData/evalink` before installing (rsync or git clone).
         Create `/DATA/AppData/evalink/.env` from `.env.docker.example` and set
-        POSTGRES_PASSWORD, PASSWORD, and DJANGO_SECRET_KEY.
+        POSTGRES_PASSWORD, PASSWORD, and DJANGO_SECRET_KEY. Optional:
+        WEB_ADMIN_PASSWORD (default `evalink9`) for the Django `/admin` user.
         Evalink web UI: `http://<host>:18000`. pgAdmin: `http://<host>:18001`
         (login email `admin@evalink.local`, password = PGADMIN_DEFAULT_PASSWORD or
         POSTGRES_PASSWORD if unset; register server host `db`, port `5432`, user
         `evalink`, database `evalink`).
-        First web container start installs Python packages (may take a few minutes).
-        After install: `docker compose exec web python manage.py createsuperuser`
+        First web container start installs Python packages (may take a few minutes)
+        and creates Django admin user `admin` with WEB_ADMIN_PASSWORD (default
+        `evalink9`; override in `.env`).

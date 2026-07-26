@@ -45,6 +45,24 @@ if [ "${RUN_MIGRATIONS:-0}" = "1" ]; then
   python manage.py migrate --noinput
 fi
 
+# Create the Django admin user on first boot when missing. Password comes from
+# WEB_ADMIN_PASSWORD (default: evalink9). Existing users are left alone.
+export WEB_ADMIN_PASSWORD="${WEB_ADMIN_PASSWORD:-evalink9}"
+export WEB_ADMIN_USER="${WEB_ADMIN_USER:-admin}"
+python manage.py shell <<'PY'
+import os
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+username = os.environ.get("WEB_ADMIN_USER", "admin")
+password = os.environ["WEB_ADMIN_PASSWORD"]
+if not User.objects.filter(username=username).exists():
+    User.objects.create_superuser(username, "", password)
+    print(f"docker-entrypoint: created Django admin user {username!r}")
+else:
+    print(f"docker-entrypoint: Django admin user {username!r} already exists")
+PY
+
 if [ "${RUN_COLLECTSTATIC:-0}" = "1" ] && [ -n "${STATIC_ROOT:-}" ]; then
   python manage.py collectstatic --noinput
 fi
