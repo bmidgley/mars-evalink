@@ -561,7 +561,9 @@ def chat(request):
         topic = f'{os.getenv("MQTT_TOPIC")}/2/json/mqtt/'
         client = mqtt.Client()
         if os.getenv('MQTT_TLS'): client.tls_set()
-        client.username_pw_set(username=os.getenv('MQTT_USER'), password=os.getenv('MQTT_PASSWORD'))
+        mqtt_user = os.getenv('MQTT_USER')
+        if mqtt_user:
+            client.username_pw_set(username=mqtt_user, password=os.getenv('MQTT_PASSWORD') or '')
         client.connect(os.getenv('MQTT_SERVER'), int(os.getenv('MQTT_PORT')), 60)
         client.publish(topic, data)
         print("\n", topic, data)
@@ -584,7 +586,9 @@ def chat(request):
             topic = f'{os.getenv("MQTT_TOPIC")}/2/json/mqtt/'
             client = mqtt.Client()
             if os.getenv('MQTT_TLS'): client.tls_set()
-            client.username_pw_set(username=os.getenv('MQTT_USER'), password=os.getenv('MQTT_PASSWORD'))
+            mqtt_user = os.getenv('MQTT_USER')
+            if mqtt_user:
+                client.username_pw_set(username=mqtt_user, password=os.getenv('MQTT_PASSWORD') or '')
             client.connect(os.getenv('MQTT_SERVER'), int(os.getenv('MQTT_PORT')), 60)
             client.publish(topic, data)
             client.disconnect()

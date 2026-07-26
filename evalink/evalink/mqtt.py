@@ -61,7 +61,9 @@ if not hasattr(settings, 'MQTT_ENABLED') or settings.MQTT_ENABLED:
     client.on_message = on_message
     client.on_disconnect = on_disconnect
     if os.getenv('MQTT_TLS'): client.tls_set()
-    client.username_pw_set(username=os.getenv('MQTT_USER'), password=os.getenv('MQTT_PASSWORD'))
+    mqtt_user = os.getenv('MQTT_USER')
+    if mqtt_user:
+        client.username_pw_set(username=mqtt_user, password=os.getenv('MQTT_PASSWORD') or '')
     client.connect(os.getenv('MQTT_SERVER'), int(os.getenv('MQTT_PORT')), 60)
 else:
     # Create a mock client for tests

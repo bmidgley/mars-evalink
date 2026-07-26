@@ -99,14 +99,16 @@ Docker host). It brings up three services on a private bridge network:
 | Service | Image                | Exposed?                                         |
 |---------|----------------------|--------------------------------------------------|
 | `db`    | `postgres:16-alpine` | internal only (no host port)                     |
-| `mqtt`  | `eclipse-mosquitto:2`| host port (Cloudflare Spectrum fronts it w/ TLS) |
+| `mqtt`  | `eclipse-mosquitto:2`| host port 1883 for trusted LAN clients (no auth)   |
 | `web`   | built from `Dockerfile` | host port (Cloudflare proxies HTTPS to it)    |
 
 Inside the compose network the web app talks to `db:5432` and `mqtt:1883` in
 the clear. Cloudflare terminates TLS on both public-facing edges:
 
 - HTTPS web -> Cloudflare proxy / Tunnel -> `web:8000` (plain HTTP).
-- MQTT 8883 TLS -> Cloudflare Spectrum -> `mqtt:1883` (plain MQTT).
+
+The MQTT broker is for trusted LAN clients only (no authentication). Restrict
+host port binding and firewall rules so port 1883 is not internet-facing.
 
 The Django container also runs the MQTT subscriber thread (started from
 `evalink/__init__.py`), so a single `web` container is enough for both
@@ -116,8 +118,8 @@ serving HTTP and consuming MQTT.
 
 ```
 cp .env.docker.example .env
-# edit .env: set POSTGRES_PASSWORD, MQTT_USER/MQTT_PASSWORD,
-# DJANGO_SECRET_KEY, DJANGO_ALLOWED_HOSTS, DJANGO_CSRF_TRUSTED_ORIGINS
+# edit .env: set POSTGRES_PASSWORD, DJANGO_SECRET_KEY,
+# DJANGO_ALLOWED_HOSTS, DJANGO_CSRF_TRUSTED_ORIGINS
 
 docker compose up -d --build
 docker compose exec web python manage.py createsuperuser
@@ -133,12 +135,9 @@ WhiteNoise from the web container, so no separate nginx is required.
   public address, or run `cloudflared tunnel` on the host pointing at
   `http://127.0.0.1:${WEB_HOST_PORT}`. Add every hostname Cloudflare
   forwards to `DJANGO_ALLOWED_HOSTS` and `DJANGO_CSRF_TRUSTED_ORIGINS`.
-- MQTT: configure a Cloudflare Spectrum app (TCP, TLS, public port 8883)
-  with origin `host:${MQTT_HOST_PORT}` (default `1883`), or use a
-  `cloudflared` TCP tunnel that targets the same address. Anonymous access
-  is disabled in `mosquitto/config/mosquitto.conf`; the broker entrypoint
-  generates `/mosquitto/data/passwd` from `MQTT_USER` / `MQTT_PASSWORD` on
-  every start, so credential changes take effect on `docker compose up`.
+- MQTT: expose port 1883 only to trusted LAN clients. The Docker broker does
+  not require authentication; restrict `host_ip` in `docker-compose.yml` and
+  use firewall rules so the broker is not reachable from the internet.
 
 ### Useful commands
 
@@ -258,7 +257,7 @@ Put these in `.env` at the repo root (or export them). `load_dotenv()` is called
 | Variable | Purpose |
 |----------|---------|
 | `MQTT_PORT` | Broker port (default `1883`) |
-| `MQTT_USER` / `MQTT_PASSWORD` | Broker credentials |
+| `MQTT_USER` / `MQTT_PASSWORD` | Optional broker credentials (bare-metal installs; not used by Docker Mosquitto) |
 | `MQTT_TLS` | Set to any non-empty value to enable TLS |
 
 **Required for drones to appear on the map** (not read by `run_remoteid_feed` itself, but required by evalink when it consumes MQTT):

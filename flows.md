@@ -41,7 +41,7 @@ The web container runs Gunicorn **and** the MQTT subscriber thread (`evalink/__i
 |----------|------|
 | `MQTT_SERVER` | Broker hostname (`mqtt` inside compose, `localhost` on bare metal) |
 | `MQTT_PORT` | Broker port (default `1883`) |
-| `MQTT_USER` / `MQTT_PASSWORD` | Required broker credentials |
+| `MQTT_USER` / `MQTT_PASSWORD` | Optional broker credentials (not used by Docker Mosquitto) |
 | `MQTT_TLS` | Non-empty enables TLS on the **client** side (Spectrum terminates TLS publicly) |
 | `MQTT_TOPIC` | Topic root, e.g. `msh/MarsSociety/MDRS` |
 | `MQTT_NODE_NUMBER` | Numeric Meshtastic node ID of the campus gateway; used as `from` on downlink chat and excluded from stale-node queries |
@@ -49,7 +49,7 @@ The web container runs Gunicorn **and** the MQTT subscriber thread (`evalink/__i
 | `MQTT_JSON_CHANNEL` | Channel name in uplink topics (default `LongFast`; used by `ask_position.py`) |
 | `CAMPUS` | Campus name in the database; scopes mesh processing and RemoteID aircraft routing |
 
-Broker auth is enforced in `mosquitto/config/mosquitto.conf` (`allow_anonymous false`). The container entrypoint regenerates the password file from env on every boot.
+Docker Mosquitto allows anonymous connections (`allow_anonymous true` in `mosquitto/config/mosquitto.conf`). Restrict host port binding and firewall rules so only trusted LAN clients can reach the broker.
 
 ## Topic Taxonomy
 
