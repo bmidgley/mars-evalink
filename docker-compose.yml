@@ -201,7 +201,7 @@ x-casaos:
   author: self
   category: self
   hostname: ""
-  icon: https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@main/Apps/PostgreSQL/icon.png
+  icon: https://www.archresearch.net/ASR-mod-tp-50.png
   index: /
   is_uncontrolled: false
   port_map: "18000"
