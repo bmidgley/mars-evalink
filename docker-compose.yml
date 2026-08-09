@@ -217,7 +217,7 @@ x-casaos:
         Create `/DATA/AppData/evalink/.env` from `.env.docker.example` and set
         POSTGRES_PASSWORD, PASSWORD, and DJANGO_SECRET_KEY. Optional:
         WEB_ADMIN_PASSWORD (default `evalink9`) for the Django `/admin` user.
-        Evalink web UI: `http://<host>:18000`. pgAdmin: `http://<host>:18001`
+        Evalink web UI: `http://host:18000`. pgAdmin: `http://host:18001`
         (login email `admin@evalink.local`, password = PGADMIN_DEFAULT_PASSWORD or
         POSTGRES_PASSWORD if unset; register server host `db`, port `5432`, user
         `evalink`, database `evalink`).
