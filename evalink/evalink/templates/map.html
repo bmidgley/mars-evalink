@@ -310,6 +310,18 @@
             font-family: 'Roboto', sans-serif;
         }
 
+        .admin-page-link {
+            font-size: 14px;
+            font-family: 'Roboto', sans-serif;
+            color: #0066cc;
+            text-decoration: none;
+        }
+
+        .admin-page-link:hover {
+            text-decoration: underline;
+            color: #004499;
+        }
+
         .drawer-toggle {
             background: none;
             border: none;
@@ -727,6 +739,11 @@
                     <option value="">Loading campuses...</option>
                 </select>
             </div>
+            {% if user.is_staff %}
+            <div class="drawer-section">
+                <a href="/admin" target="_blank" rel="noopener noreferrer" class="admin-page-link">Admin page</a>
+            </div>
+            {% endif %}
             <div class="drawer-section">
                 <div class="drawer-section-title">Search</div>
                 <div class="search-controls">
