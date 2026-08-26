@@ -59,6 +59,11 @@ class PositionLog(models.Model):
     updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
     updated_on = models.DateField(null=True, db_index=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['station', '-updated_at'], name='poslog_station_updated_at'),
+        ]
+
 class AircraftPositionLog(models.Model):
     message_id = models.BigIntegerField(db_index=True, null=True)
     aircraft = models.ForeignKey('Aircraft', on_delete=models.CASCADE, db_index=True)
