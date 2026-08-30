@@ -11,6 +11,7 @@ class StationProfileAdmin(admin.ModelAdmin):
     list_display = [f.name for f in StationProfile._meta.fields]
 class PositionLogAdmin(admin.ModelAdmin):
     list_display = [f.name for f in PositionLog._meta.fields]
+    readonly_fields = ('updated_at',)
 class TelemetryLogAdmin(admin.ModelAdmin):
     list_display = [f.name for f in TelemetryLog._meta.fields]
     exclude = ('position_log',)
