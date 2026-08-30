@@ -240,6 +240,13 @@ An example line from the device:
 
 The firmware also emits debug lines that are not JSON (they do not start with `{`); the listener ignores those.
 
+### Importing data
+
+cd evalink
+python manage.py import_mqlog ../mqlog --campus MDRS
+python manage.py import_mqlog ../mqlog --campus MDRS --dry-run
+python manage.py import_mqlog ../mqlog --campus MDRS --from 2023-09-23 --to 2023-10-01
+
 ### Minimum environment variables
 
 Put these in `.env` at the repo root (or export them). `load_dotenv()` is called when the command runs.

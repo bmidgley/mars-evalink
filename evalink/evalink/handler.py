@@ -8,13 +8,50 @@ from django.utils import timezone as django_timezone
 import pytz
 import os
 
-def process_message(message):
+def _ensure_aware_utc(dt):
+    if dt is None:
+        return None
+    if django_timezone.is_naive(dt):
+        return django_timezone.make_aware(dt, timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _stamp_log_times(model_cls, pk, observed_at, observed_on):
+    """Override auto_now updated_at with the bus observation time."""
+    model_cls.objects.filter(pk=pk).update(updated_at=observed_at, updated_on=observed_on)
+
+
+def _prior_position(station, at_time):
+    return (
+        PositionLog.objects
+        .filter(station=station, updated_at__lte=at_time)
+        .order_by('-updated_at')
+        .first()
+    )
+
+
+def process_message(message, observed_at=None, save_all_positions=False, update_station=True):
+    """
+    Process a Meshtastic MQTT JSON envelope (the msg.payload object).
+
+    observed_at: when set (historical import), use as updated_at / updated_on
+                 instead of wall clock now.
+    save_all_positions: when True, persist every position (skip live fence
+                        dedupe). Used for mqlog import; weed later.
+    update_station: when False, do not mutate Station.features / last_position
+                    / StationMeasure (keeps live state intact during import).
+                    New stations are still created from nodeinfo.
+    """
     number = message['from']
     payload = message['payload']
     campus = Campus.objects.get(name=os.getenv('CAMPUS'))
     tz = pytz.timezone(campus.time_zone)
-    current_time = datetime.now(timezone.utc)
-    today = datetime.now(tz).date()
+    if observed_at is not None:
+        current_time = _ensure_aware_utc(observed_at)
+        today = current_time.astimezone(tz).date()
+    else:
+        current_time = datetime.now(timezone.utc)
+        today = datetime.now(tz).date()
     station = Station.objects.filter(hardware_number=number).first()
 
     if message['type'] == 'nodeinfo':
@@ -37,7 +74,8 @@ def process_message(message):
                 hardware_number=number,
                 hardware_node=payload['id'],
                 station_type=hardware.station_type,
-                short_name=(payload['shortname'] or 'blank!').replace('\x00', ''))
+                short_name=(payload['shortname'] or 'blank!').replace('\x00', ''),
+                name=(payload.get('longname') or 'blank').replace('\x00', ''))
             station.updated_at = current_time
             try:
                 print(f'adding new station {station} at {current_time} number {number}')
@@ -45,6 +83,10 @@ def process_message(message):
             except django.db.utils.IntegrityError as e:
                 print(e)
                 return
+            if not update_station:
+                return
+        if not update_station:
+            return
         station.updated_at = current_time
         station.name = payload['longname'] or 'blank'
         station.name = station.name.replace("\x00", "")
@@ -59,34 +101,35 @@ def process_message(message):
         # print(f'skipping this message because we do not know the station: {message}')
         return
 
-    if station.features == None: station.features = {
-        "type": "Feature",
-        "properties": {
-            "name": station.name,
-            "label": station.name,
-            "time": iso_time(message['timestamp']),
-            "hardware": station.hardware.hardware_type,
-            "node_type": station.station_type,
-            "altitude": None,
-            "ground_speed": None,
-            "ground_track": None,
-            "temperature": None,
-            "relative_humidity": None,
-            "barometric_pressure": None,
-            "wind_direction": None,
-            "wind_speed": None,
-            "wind_gust": None,
-            "wind_lull": None,
-            "battery_level": None,
-            "voltage": None,
-            "current": None,
-            "texts": [],
-        },
-        "geometry": { "type": "Point" },
-        "id": str(station.id)
-    }
-    if "texts" not in station.features["properties"]: station.features["properties"]["texts"] = [] # remove
-    station.features["properties"]["node_type"] = station.station_type
+    if update_station:
+        if station.features == None: station.features = {
+            "type": "Feature",
+            "properties": {
+                "name": station.name,
+                "label": station.name,
+                "time": iso_time(message['timestamp']),
+                "hardware": station.hardware.hardware_type,
+                "node_type": station.station_type,
+                "altitude": None,
+                "ground_speed": None,
+                "ground_track": None,
+                "temperature": None,
+                "relative_humidity": None,
+                "barometric_pressure": None,
+                "wind_direction": None,
+                "wind_speed": None,
+                "wind_gust": None,
+                "wind_lull": None,
+                "battery_level": None,
+                "voltage": None,
+                "current": None,
+                "texts": [],
+            },
+            "geometry": { "type": "Point" },
+            "id": str(station.id)
+        }
+        if "texts" not in station.features["properties"]: station.features["properties"]["texts"] = [] # remove
+        station.features["properties"]["node_type"] = station.station_type
 
     if message['type'] == 'position':
         timestamp = payload.get('timestamp', payload.get('time'))
@@ -110,28 +153,40 @@ def process_message(message):
             updated_on=today,
             updated_at=current_time)
         # log this location if it's away from the hab, or if it represents returning to the hab, or position was blank
-        if fence.outside(lat, lon) or station.last_position == None or station.outside(fence) or station.last_position.updated_on != today:
+        should_save = (
+            save_all_positions
+            or fence.outside(lat, lon)
+            or station.last_position == None
+            or station.outside(fence)
+            or station.last_position.updated_on != today
+        )
+        if should_save:
             position_log.save()
-            station.last_position = position_log
-        if "geometry" not in station.features: station.features["geometry"] = {"type": "Point"}
-        station.features["type"] = "Feature"
-        station.features["geometry"]["type"] = "Point"
-        station.features["geometry"]["coordinates"] = [lon, lat]
-        station.features["properties"]["altitude"] = position_log.altitude or station.features["properties"].get("altitude")
-        station.features["properties"]["ground_speed"] = position_log.ground_speed or station.features["properties"].get("ground_speed")
-        station.features["properties"]["ground_track"] = position_log.ground_track or station.features["properties"].get("ground_track")
-        station.features["properties"]["node_type"] = station.hardware.station_type
-        station.features["properties"]["time"] = iso_time(message['timestamp'])
-        station.updated_at = current_time
-        station.save()
-        log_measurements(station, station.features, current_time)
+            if observed_at is not None:
+                _stamp_log_times(PositionLog, position_log.pk, current_time, today)
+            if update_station:
+                station.last_position = position_log
+        if update_station:
+            if "geometry" not in station.features: station.features["geometry"] = {"type": "Point"}
+            station.features["type"] = "Feature"
+            station.features["geometry"]["type"] = "Point"
+            station.features["geometry"]["coordinates"] = [lon, lat]
+            station.features["properties"]["altitude"] = position_log.altitude or station.features["properties"].get("altitude")
+            station.features["properties"]["ground_speed"] = position_log.ground_speed or station.features["properties"].get("ground_speed")
+            station.features["properties"]["ground_track"] = position_log.ground_track or station.features["properties"].get("ground_track")
+            station.features["properties"]["node_type"] = station.hardware.station_type
+            station.features["properties"]["time"] = iso_time(message['timestamp'])
+            station.updated_at = current_time
+            station.save()
+            log_measurements(station, station.features, current_time)
         return
 
     if message['type'] == 'telemetry':
+        position_for_log = station.last_position if update_station else _prior_position(station, current_time)
         telemetry_log = TelemetryLog(
             message_id=message['id'],
             station=station,
-            position_log=station.last_position,
+            position_log=position_for_log,
             temperature=payload.get('temperature'),
             relative_humidity=payload.get('relative_humidity'),
             barometric_pressure=payload.get('barometric_pressure'),
@@ -147,6 +202,10 @@ def process_message(message):
         try:
             telemetry_log.save()
         except IntegrityError as e:
+            return
+        if observed_at is not None:
+            _stamp_log_times(TelemetryLog, telemetry_log.pk, current_time, today)
+        if not update_station:
             return
         station.features["properties"]["temperature"] = telemetry_log.temperature or station.features["properties"].get("temperature")
         station.features["properties"]["relative_humidity"] = telemetry_log.relative_humidity or station.features["properties"].get("relative_humidity")
@@ -168,14 +227,22 @@ def process_message(message):
     if message['type'] == 'text':
         text = payload.get('text').replace("\x00", "")
         print(f'@@text "{text}"')
+        position_for_log = station.last_position if update_station else _prior_position(station, current_time)
         text_log = TextLog(
             station=station,
-            position_log=station.last_position,
+            position_log=position_for_log,
             serial_number=message.get("id"), # + (hash(text) % 100000),
             text=text,
             updated_at=current_time,
-            updated_on=current_time.astimezone(tz).date())
-        text_log.save()
+            updated_on=today)
+        try:
+            text_log.save()
+        except IntegrityError:
+            return
+        if observed_at is not None:
+            _stamp_log_times(TextLog, text_log.pk, current_time, today)
+        if not update_station:
+            return
 
         if "texts" not in station.features["properties"]: station.features["properties"]["texts"] = [] # remove
         station.features["properties"]["texts"].append({

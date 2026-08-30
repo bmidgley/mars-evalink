@@ -8,16 +8,16 @@ from .settings import *
 # Disable MQTT during tests
 MQTT_ENABLED = False
 
-# Use a test-specific database
+# Use a test-specific database (env overrides for local runs; CI defaults match workflow)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'HOST': 'localhost',
-        'NAME': 'test_db',
-        'PORT': '5432',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'OPTIONS': {'sslmode': 'disable'},
+        'HOST': os.getenv('HOST', 'localhost'),
+        'NAME': os.getenv('NAME', 'test_db'),
+        'PORT': os.getenv('PORT', '5432'),
+        'USER': os.getenv('DBUSER', 'postgres'),
+        'PASSWORD': os.getenv('PASSWORD', 'postgres'),
+        'OPTIONS': {'sslmode': os.getenv('SSLMODE', 'disable')},
     }
 }
 
