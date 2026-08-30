@@ -555,10 +555,11 @@ def create_heard_messages(text, message_id, current_time):
 @login_required
 def chat(request):
     gateway_node_number = int(os.getenv('MQTT_NODE_NUMBER'))
+    sender = request.user.username[:3]
 
     message = request.GET.get('message')
     if message:
-        message = request.user.username + ': ' + message
+        message = sender + ': ' + message
         send_message = {'channel': 0, 'from': gateway_node_number, 'payload': message, 'type': 'sendtext'}
         data = json.dumps(send_message)
         topic = f'{os.getenv("MQTT_TOPIC")}/2/json/mqtt/'
@@ -582,7 +583,7 @@ def chat(request):
     if request.method == "POST":
         form = ChatForm(request.POST)
         if form.is_valid():
-            message = request.user.username + ': '
+            message = sender + ': '
             message += form.cleaned_data['message']
             send_message = {'channel': 0, 'from': gateway_node_number, 'payload': message, 'type': 'sendtext'}
             data = json.dumps(send_message)
