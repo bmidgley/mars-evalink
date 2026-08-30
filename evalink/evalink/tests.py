@@ -220,6 +220,74 @@ class FeaturesEndpointTestCase(TestCase):
         # Assert distance calculation (should be 1 for station outside geofence)
         self.assertIsNotNone(outside_feature)
         self.assertEqual(outside_feature['properties']['distance'], 1)
+        self.assertTrue(outside_feature['properties']['on_eva'])
+
+    @patch.dict(os.environ, {'CAMPUS': 'Test Campus'})
+    def test_features_endpoint_on_eva_requires_outer_geofence(self):
+        """on_eva is true only outside inner geofence and inside outer geofence"""
+        outer_geofence = Geofence.objects.create(
+            latitude1=39.5,
+            longitude1=-105.5,
+            latitude2=40.5,
+            longitude2=-104.5,
+        )
+        self.campus.outer_geofence = outer_geofence
+        self.campus.save()
+
+        eva_station = Station.objects.create(
+            name='EVA Station',
+            short_name='EVA',
+            hardware=self.hardware,
+            hardware_node='node_eva',
+            hardware_number=12349,
+            station_type='active',
+            station_profile=self.station_profile,
+            features={
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'Point',
+                    'coordinates': [-105.0, 40.2],
+                },
+                'properties': {
+                    'name': 'EVA Station',
+                },
+            },
+            updated_at=timezone.now(),
+        )
+        far_station = Station.objects.create(
+            name='Far Station',
+            short_name='FAR',
+            hardware=self.hardware,
+            hardware_node='node_far',
+            hardware_number=12350,
+            station_type='active',
+            station_profile=self.station_profile,
+            features={
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'Point',
+                    'coordinates': [-106.0, 41.0],
+                },
+                'properties': {
+                    'name': 'Far Station',
+                },
+            },
+            updated_at=timezone.now(),
+        )
+
+        self.client.login(username='testuser', password='testpass123')
+        response = self.client.get('/features.json')
+        self.assertEqual(response.status_code, 200)
+
+        features_by_name = {
+            feature['properties']['name']: feature
+            for feature in json.loads(response.content)['features']
+        }
+
+        self.assertTrue(features_by_name['EVA Station']['properties']['on_eva'])
+        self.assertEqual(features_by_name['EVA Station']['properties']['distance'], 1)
+        self.assertFalse(features_by_name['Far Station']['properties']['on_eva'])
+        self.assertEqual(features_by_name['Far Station']['properties']['distance'], 1)
 
     @patch.dict(os.environ, {'CAMPUS': 'Test Campus'})
     def test_features_endpoint_station_without_coordinates(self):

@@ -1193,7 +1193,7 @@
                         const coordinates = feature.getGeometry().getCoordinates();
                         const days_old = feature.get('days_old') || 0;
 
-                        if (feature.get('node_type') == 'person' && feature.get('distance') > 0 && days_old == 0) {
+                        if (feature.get('node_type') == 'person' && feature.get('on_eva') && days_old == 0) {
                             onEva.push(name)
                         }
 
@@ -1581,7 +1581,7 @@
         const vectorLayer = new ol.layer.Vector({
             source: vectorSource,
             style: function (feature) {
-                const eva_lost = (feature.get('distance') > 0 && feature.get('hours_old') > 1);
+                const eva_lost = (feature.get('on_eva') && feature.get('hours_old') > 1);
                 const untracked = feature.get('hours_old') > 12;
                 const emergency = feature.get('emergency') || untracked || eva_lost;
                 const nodeType = feature.get('node_type')

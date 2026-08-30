@@ -181,6 +181,7 @@ def set_profile_campus(request):
 def features(request):
     campus = Campus.objects.get(name=os.getenv('CAMPUS'))
     fence = campus.inner_geofence
+    outer_fence = campus.outer_geofence
     data = {
         "type": "FeatureCollection",
         "features": [],
@@ -311,6 +312,8 @@ def features(request):
                     if longitude > fence.longitude1 and longitude < fence.longitude2 and latitude > fence.latitude1 and latitude < fence.latitude2:
                         distance = 0
                     station.features['properties']['distance'] = distance
+                    inside_outer = outer_fence is None or not outer_fence.outside(latitude, longitude)
+                    station.features['properties']['on_eva'] = distance > 0 and inside_outer
             data["features"].append(station.features)
     return JsonResponse(data, json_dumps_params={'indent': 2})
 
