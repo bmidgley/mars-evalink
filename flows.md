@@ -55,7 +55,7 @@ Docker Mosquitto allows anonymous connections (`allow_anonymous true` in `mosqui
 
 | Topic pattern | Direction | Typical publisher | Subscriber |
 |---------------|-----------|-------------------|------------|
-| `{MQTT_TOPIC}/+/json/#` | Uplink (mesh -> cloud) | Meshtastic gateway, `ask_position.py` | Django `mqtt.py` |
+| `{MQTT_TOPIC}/+/json/#` | Uplink (mesh -> cloud) | Meshtastic gateway | Django `mqtt.py` |
 | `{MQTT_TOPIC}/2/json/mqtt/` | Downlink (cloud -> mesh) | Django `chat` view | Meshtastic gateway |
 | `{MQTT_TOPIC}/aircraft/{hex}` | Uplink (aircraft/drones) | `run_remoteid_feed.py`, external ADS-B bridge | Django `mqtt.py` |
 
@@ -182,7 +182,7 @@ sequenceDiagram
 
 ## Flow 3: Stale position polling (`ask_position.py`)
 
-When mesh nodes stop reporting position while still in the field, an external cron job can poll them via the Meshtastic CLI and inject position packets back onto the uplink bus.
+When mesh nodes stop reporting position while still in the field, an external cron job requests positions via the Meshtastic CLI. The gateway radio uplinks the remote position reply as JSON MQTT; Django persists it.
 
 ```mermaid
 sequenceDiagram
@@ -191,6 +191,7 @@ sequenceDiagram
     participant HTTP as evalink /stalenode
     participant CLI as meshtastic CLI
     participant Node as Target mesh node
+    participant GW as Gateway radio
     participant Broker as Mosquitto
     participant Django as Django subscriber
     participant DB as PostgreSQL
@@ -201,16 +202,15 @@ sequenceDiagram
     loop each stale station
         Script->>CLI: meshtastic --request-position --dest !node
         CLI->>Node: LoRa position request
-        Node-->>CLI: Position response
-        CLI-->>Script: Parse "Position received: (lat, lon) Altitudem"
-        Script->>Broker: PUBLISH {MQTT_TOPIC}/2/json/LongFast/{node}
-        Note right of Script: Synthetic position envelope (type=position)
+        Node-->>GW: POSITION_APP reply
+        GW->>Broker: PUBLISH {MQTT_TOPIC}/2/json/{channel}/{gateway}
+        Note right of GW: JSON type=position (from=remote)
         Broker->>Django: DELIVER
         Django->>DB: Same as normal position uplink
     end
 ```
 
-The `/stalenode` endpoint (no auth) returns MQTT-oriented metadata including `mqtt_downlink_topic` and `gateway_node_number`, but `ask_position.py` only uses the station list and publishes uplink position packets itself.
+The `/stalenode` endpoint (no auth) returns MQTT-oriented metadata including `mqtt_downlink_topic` and `gateway_node_number`. `ask_position.py` only triggers the CLI request; persistence is via the gateway MQTT JSON uplink.
 
 Stale selection criteria:
 
