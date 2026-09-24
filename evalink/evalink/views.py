@@ -313,7 +313,11 @@ def features(request):
                         distance = 0
                     station.features['properties']['distance'] = distance
                     inside_outer = outer_fence is None or not outer_fence.outside(latitude, longitude)
-                    station.features['properties']['on_eva'] = distance > 0 and inside_outer
+                    station.features['properties']['on_eva'] = (
+                        station.station_type != 'infrastructure'
+                        and distance > 0
+                        and inside_outer
+                    )
             data["features"].append(station.features)
     return JsonResponse(data, json_dumps_params={'indent': 2})
 

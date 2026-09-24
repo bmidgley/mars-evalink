@@ -291,6 +291,43 @@ class FeaturesEndpointTestCase(TestCase):
         self.assertEqual(features_by_name['Far Station']['properties']['distance'], 1)
 
     @patch.dict(os.environ, {'CAMPUS': 'Test Campus'})
+    def test_features_endpoint_infrastructure_not_on_eva(self):
+        """Infrastructure stations outside the geofence do not get on_eva"""
+        Station.objects.create(
+            name='Infra Station',
+            short_name='INF',
+            hardware=self.hardware,
+            hardware_node='node_infra',
+            hardware_number=12351,
+            station_type='infrastructure',
+            station_profile=self.station_profile,
+            features={
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'Point',
+                    'coordinates': [-106.0, 41.0],
+                },
+                'properties': {
+                    'name': 'Infra Station',
+                    'node_type': 'infrastructure',
+                },
+            },
+            updated_at=timezone.now(),
+        )
+
+        self.client.login(username='testuser', password='testpass123')
+        response = self.client.get('/features.json')
+        self.assertEqual(response.status_code, 200)
+
+        features_by_name = {
+            feature['properties']['name']: feature
+            for feature in json.loads(response.content)['features']
+        }
+
+        self.assertEqual(features_by_name['Infra Station']['properties']['distance'], 1)
+        self.assertFalse(features_by_name['Infra Station']['properties']['on_eva'])
+
+    @patch.dict(os.environ, {'CAMPUS': 'Test Campus'})
     def test_features_endpoint_station_without_coordinates(self):
         """Test that stations without valid coordinates are excluded"""
         # Create station with invalid coordinates
