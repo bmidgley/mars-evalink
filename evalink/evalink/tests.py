@@ -8,6 +8,7 @@ import os
 from unittest.mock import patch
 from .models import Campus, Station, Hardware, Geofence, StationProfile
 from .test_mqtt_utils import mock_mqtt_client, create_test_mqtt_message
+from . import handler
 
 
 class FeaturesEndpointTestCase(TestCase):
@@ -422,3 +423,50 @@ class FeaturesEndpointTestCase(TestCase):
         self.assertIn('timestamp', test_message)
         self.assertEqual(test_message['type'], 'text')
         self.assertEqual(test_message['from'], 12345)
+
+
+class NodeinfoHandlerTestCase(TestCase):
+    def setUp(self):
+        self.campus = Campus.objects.create(
+            name='Test Campus',
+            latitude=40.0,
+            longitude=-105.0,
+            time_zone='America/Denver',
+        )
+        self.hardware = Hardware.objects.create(
+            name='Test Hardware',
+            hardware_type=4,
+            station_type='rover',
+        )
+        self.station_profile = StationProfile.objects.create(
+            name='Test Profile',
+            configuration={},
+            compatible_firmwares=['1.0.0'],
+        )
+        self.station = Station.objects.create(
+            name='Old Long Name',
+            short_name='OLD',
+            hardware=self.hardware,
+            hardware_node='!abcdef01',
+            hardware_number=12345,
+            station_type='rover',
+            station_profile=self.station_profile,
+            features={'type': 'Feature', 'properties': {'name': 'Old Long Name'}, 'geometry': {'type': 'Point'}},
+        )
+
+    @patch.dict(os.environ, {'CAMPUS': 'Test Campus'})
+    def test_nodeinfo_updates_short_name(self):
+        message = create_test_mqtt_message(
+            message_type='nodeinfo',
+            payload={
+                'hardware': 4,
+                'id': '!abcdef01',
+                'longname': 'New Long Name',
+                'shortname': 'NEW',
+            },
+            from_node=12345,
+        )
+        handler.process_message(message)
+        self.station.refresh_from_db()
+        self.assertEqual(self.station.name, 'New Long Name')
+        self.assertEqual(self.station.short_name, 'NEW')

@@ -90,6 +90,7 @@ def process_message(message, observed_at=None, save_all_positions=False, update_
         station.updated_at = current_time
         station.name = payload['longname'] or 'blank'
         station.name = station.name.replace("\x00", "")
+        station.short_name = (payload.get('shortname') or 'blank!').replace('\x00', '')
         if station.features == None: station.features = {}
         if "properties" not in station.features: station.features["properties"] = {}
         station.features["properties"]["name"] = station.name
