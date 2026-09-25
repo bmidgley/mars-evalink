@@ -2103,8 +2103,14 @@
                     info.style.top = event.pixel[1] + 'px';
                     info.style.visibility = 'visible';
                     info.innerText = `${flight}\nAlt: ${alt}\nSpeed: ${speed}\nHeading: ${heading}\nAge: ${age}`;
-                } else if (!feature.get("name") && feature.get("label")) {
-                    info.style.left = event.pixel[0] + 'px';
+                } else if (feature.get("name")) {
+                    // Show station long name on hover
+                    info.style.left = (event.pixel[0] + 10) + 'px';
+                    info.style.top = event.pixel[1] + 'px';
+                    info.style.visibility = 'visible';
+                    info.innerText = feature.get("name");
+                } else if (feature.get("label")) {
+                    info.style.left = (event.pixel[0] + 10) + 'px';
                     info.style.top = event.pixel[1] + 'px';
                     info.style.visibility = 'visible';
                     info.innerText = feature.get("label");
