@@ -121,6 +121,19 @@ def stalenode(request):
     return JsonResponse(base)
 
 
+def current_campus(request):
+    """Return the user's preferred campus, falling back to CAMPUS env."""
+    profile = getattr(request.user, 'profile', None)
+    if profile is None and getattr(request.user, 'is_authenticated', False):
+        try:
+            profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        except Exception:
+            profile = None
+    if profile and profile.campus_id:
+        return profile.campus
+    return Campus.objects.get(name=os.getenv('CAMPUS'))
+
+
 @login_required
 def index(request):
     """Render map with default campus from user profile or env; pass coords for initial map view."""
@@ -128,22 +141,12 @@ def index(request):
     default_latitude = None
     default_longitude = None
     try:
-        env_campus = Campus.objects.get(name=os.getenv('CAMPUS'))
-        default_campus_id = env_campus.id
-        default_latitude = env_campus.latitude
-        default_longitude = env_campus.longitude
+        campus = current_campus(request)
+        default_campus_id = campus.id
+        default_latitude = campus.latitude
+        default_longitude = campus.longitude
     except (Campus.DoesNotExist, TypeError):
         pass
-    profile = getattr(request.user, 'profile', None)
-    if profile is None:
-        try:
-            profile, _ = UserProfile.objects.get_or_create(user=request.user)
-        except Exception:
-            profile = None
-    if profile and profile.campus_id:
-        default_campus_id = profile.campus_id
-        default_latitude = profile.campus.latitude
-        default_longitude = profile.campus.longitude
     context = {
         'default_campus_id': default_campus_id,
         'default_latitude': default_latitude,
@@ -179,7 +182,7 @@ def set_profile_campus(request):
 
 @login_required
 def features(request):
-    campus = Campus.objects.get(name=os.getenv('CAMPUS'))
+    campus = current_campus(request)
     fence = campus.inner_geofence
     outer_fence = campus.outer_geofence
     data = {
@@ -302,22 +305,25 @@ def features(request):
                 else:
                     # No planned position logs - keep default position
                     pass
-            
-            if fence:
-                coordinates = station.features['geometry'].get('coordinates')
-                if coordinates:
-                    distance = 1
-                    longitude = coordinates[0]
-                    latitude = coordinates[1]
-                    if longitude > fence.longitude1 and longitude < fence.longitude2 and latitude > fence.latitude1 and latitude < fence.latitude2:
-                        distance = 0
-                    station.features['properties']['distance'] = distance
-                    inside_outer = outer_fence is None or not outer_fence.outside(latitude, longitude)
-                    station.features['properties']['on_eva'] = (
-                        station.station_type != 'infrastructure'
-                        and distance > 0
-                        and inside_outer
-                    )
+
+            coordinates = station.features['geometry'].get('coordinates')
+            if outer_fence and coordinates:
+                longitude = coordinates[0]
+                latitude = coordinates[1]
+                if outer_fence.outside(latitude, longitude):
+                    continue
+
+            if fence and coordinates:
+                distance = 1
+                longitude = coordinates[0]
+                latitude = coordinates[1]
+                if longitude > fence.longitude1 and longitude < fence.longitude2 and latitude > fence.latitude1 and latitude < fence.latitude2:
+                    distance = 0
+                station.features['properties']['distance'] = distance
+                station.features['properties']['on_eva'] = (
+                    station.station_type != 'infrastructure'
+                    and distance > 0
+                )
             data["features"].append(station.features)
     return JsonResponse(data, json_dumps_params={'indent': 2})
 

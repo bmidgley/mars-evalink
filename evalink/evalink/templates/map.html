@@ -992,6 +992,8 @@
                 });
                 if (!response.ok) {
                     console.error('Failed to save campus preference', await response.text());
+                } else {
+                    updateGeoJSON();
                 }
             } catch (e) {
                 console.error('Error saving campus preference', e);

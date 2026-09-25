@@ -123,10 +123,12 @@ class FeaturesEndpointTestCase(TestCase):
         self.assertIsInstance(data['features'], list)
         
         # Assert that only recent stations are included (not the old one)
-        self.assertEqual(len(data['features']), 1)
+        station_names = [f['properties'].get('name') for f in data['features']]
+        self.assertIn('Test Station 1', station_names)
+        self.assertNotIn('Test Station 2', station_names)
         
         # Assert station data
-        feature = data['features'][0]
+        feature = next(f for f in data['features'] if f['properties'].get('name') == 'Test Station 1')
         self.assertIn('type', feature)
         self.assertEqual(feature['type'], 'Feature')
         self.assertIn('geometry', feature)
@@ -172,7 +174,9 @@ class FeaturesEndpointTestCase(TestCase):
         data = json.loads(response.content)
         
         # Assert that both stations are included (including old one)
-        self.assertEqual(len(data['features']), 2)
+        station_names = [f['properties'].get('name') for f in data['features']]
+        self.assertIn('Test Station 1', station_names)
+        self.assertIn('Test Station 2', station_names)
 
     @patch.dict(os.environ, {'CAMPUS': 'Test Campus'})
     def test_features_endpoint_station_outside_geofence(self):
@@ -225,7 +229,7 @@ class FeaturesEndpointTestCase(TestCase):
 
     @patch.dict(os.environ, {'CAMPUS': 'Test Campus'})
     def test_features_endpoint_on_eva_requires_outer_geofence(self):
-        """on_eva is true only outside inner geofence and inside outer geofence"""
+        """Nodes outside outer geofence are omitted; on_eva only outside inner fence"""
         outer_geofence = Geofence.objects.create(
             latitude1=39.5,
             longitude1=-105.5,
@@ -255,7 +259,7 @@ class FeaturesEndpointTestCase(TestCase):
             },
             updated_at=timezone.now(),
         )
-        far_station = Station.objects.create(
+        Station.objects.create(
             name='Far Station',
             short_name='FAR',
             hardware=self.hardware,
@@ -285,10 +289,65 @@ class FeaturesEndpointTestCase(TestCase):
             for feature in json.loads(response.content)['features']
         }
 
+        self.assertIn('EVA Station', features_by_name)
         self.assertTrue(features_by_name['EVA Station']['properties']['on_eva'])
         self.assertEqual(features_by_name['EVA Station']['properties']['distance'], 1)
-        self.assertFalse(features_by_name['Far Station']['properties']['on_eva'])
-        self.assertEqual(features_by_name['Far Station']['properties']['distance'], 1)
+        self.assertNotIn('Far Station', features_by_name)
+
+    @patch.dict(os.environ, {'CAMPUS': 'Test Campus'})
+    def test_features_endpoint_uses_user_campus_outer_geofence(self):
+        """Filter by the user's profile campus outer geofence, not only CAMPUS env"""
+        other_campus = Campus.objects.create(
+            name='Other Campus',
+            latitude=50.0,
+            longitude=-110.0,
+            time_zone='America/Denver',
+        )
+        other_outer = Geofence.objects.create(
+            latitude1=49.5,
+            longitude1=-110.5,
+            latitude2=50.5,
+            longitude2=-109.5,
+        )
+        other_campus.outer_geofence = other_outer
+        other_campus.save()
+
+        Station.objects.create(
+            name='Near Other Campus',
+            short_name='NOC',
+            hardware=self.hardware,
+            hardware_node='node_noc',
+            hardware_number=12360,
+            station_type='active',
+            station_profile=self.station_profile,
+            features={
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'Point',
+                    'coordinates': [-110.0, 50.0],
+                },
+                'properties': {
+                    'name': 'Near Other Campus',
+                },
+            },
+            updated_at=timezone.now(),
+        )
+
+        from .models import UserProfile
+        UserProfile.objects.create(user=self.user, campus=other_campus)
+
+        self.client.login(username='testuser', password='testpass123')
+        response = self.client.get('/features.json')
+        self.assertEqual(response.status_code, 200)
+
+        features_by_name = {
+            feature['properties']['name']: feature
+            for feature in json.loads(response.content)['features']
+        }
+
+        # Test Campus station is outside Other Campus outer geofence
+        self.assertNotIn('Test Station 1', features_by_name)
+        self.assertIn('Near Other Campus', features_by_name)
 
     @patch.dict(os.environ, {'CAMPUS': 'Test Campus'})
     def test_features_endpoint_infrastructure_not_on_eva(self):
