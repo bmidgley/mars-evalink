@@ -207,7 +207,10 @@ def features(request):
             station.features['properties']['id'] = station.id
             station.features['properties']['days_old'] = (now - station.updated_at).days
             station.features['properties']['hours_old'] = (now - station.updated_at).total_seconds() / 3600.0
-            
+            if station.asset:
+                station.features['properties']['image'] = f'/static/{station.asset}.jpg'
+                station.features['properties']['thumbnail'] = f'/static/{station.asset}_thumb.jpg'
+
             # Special handling for planner stations
             if station.station_type == 'planner':
                 # Get text messages for today and tomorrow using updated_on field

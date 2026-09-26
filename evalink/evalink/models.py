@@ -38,6 +38,7 @@ class Station(models.Model):
     hardware_number = models.BigIntegerField(db_index=True, unique=True)
     updated_at = models.DateTimeField(null=False, db_index=True, auto_now=True)
     station_type = models.CharField(max_length=255)
+    asset = models.CharField(max_length=255, null=True, blank=True)
     def outside(self, fence):
         return self.last_position and fence.outside(self.last_position.latitude, self.last_position.longitude)
 
