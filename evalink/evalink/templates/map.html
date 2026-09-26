@@ -33,7 +33,8 @@
             left: 0;
         }
 
-        #info {
+        #info,
+        .station-hover-label {
             position: absolute;
             display: inline-block;
             height: auto;
@@ -48,6 +49,13 @@
             transform: translateX(3%);
             visibility: hidden;
             pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .station-hover-label {
+            left: auto;
+            transform: none;
+            visibility: visible;
         }
 
         .popup {
@@ -1263,6 +1271,10 @@
 
                     vectorSource.addFeatures(features);
 
+                    if (shiftLabelsVisible) {
+                        showAllStationLabels();
+                    }
+
                     updateMarkerList();
                     if (timeSliderVisible) {
                         updateSlider();
@@ -1871,7 +1883,60 @@
             }),
         });
 
+        let shiftLabelsVisible = false;
+        let stationLabelOverlays = [];
+
+        function clearStationLabelOverlays() {
+            stationLabelOverlays.forEach(overlay => map.removeOverlay(overlay));
+            stationLabelOverlays = [];
+        }
+
+        function showAllStationLabels() {
+            clearStationLabelOverlays();
+            shiftLabelsVisible = true;
+            vectorSource.getFeatures().forEach(feature => {
+                const name = feature.get('name');
+                if (!name) {
+                    return;
+                }
+                const el = document.createElement('div');
+                el.className = 'station-hover-label';
+                const thumbnail = feature.get('thumbnail');
+                if (thumbnail) {
+                    el.innerHTML = encodeXML(name) +
+                        '<br><img src="' + encodeXML(thumbnail) + '" alt="" style="max-width:120px;max-height:120px;margin-top:4px;display:block;">';
+                } else {
+                    el.textContent = name;
+                }
+                const labelOverlay = new ol.Overlay({
+                    element: el,
+                    positioning: 'bottom-left',
+                    offset: [10, -24],
+                    stopEvent: false,
+                });
+                labelOverlay.setPosition(feature.getGeometry().getCoordinates());
+                map.addOverlay(labelOverlay);
+                stationLabelOverlays.push(labelOverlay);
+            });
+        }
+
+        function hideAllStationLabels() {
+            shiftLabelsVisible = false;
+            clearStationLabelOverlays();
+        }
+
+        function isTypingTarget(target) {
+            if (!target || !target.tagName) {
+                return false;
+            }
+            const tag = target.tagName.toUpperCase();
+            return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
+        }
+
         document.addEventListener('keydown', function(event) {
+            if (event.key === 'Shift' && !event.repeat && !isTypingTarget(event.target)) {
+                showAllStationLabels();
+            }
             if(event.key == "z") map.getView().setRotation(Math.PI);
             if(event.key == "Escape") {
                 // Close location popup if it's open
@@ -1888,7 +1953,16 @@
         });
 
         document.addEventListener('keyup', function(event) {
+            if (event.key === 'Shift') {
+                hideAllStationLabels();
+            }
             if(event.key == "z") map.getView().setRotation(0);
+        });
+
+        window.addEventListener('blur', function() {
+            if (shiftLabelsVisible) {
+                hideAllStationLabels();
+            }
         });
 
         const overlay = new ol.Overlay({
