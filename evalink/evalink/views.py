@@ -324,7 +324,7 @@ def features(request):
                     distance = 0
                 station.features['properties']['distance'] = distance
                 station.features['properties']['on_eva'] = (
-                    station.station_type != 'infrastructure'
+                    station.station_type == 'person'
                     and distance > 0
                 )
             data["features"].append(station.features)

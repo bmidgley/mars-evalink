@@ -188,7 +188,7 @@ class FeaturesEndpointTestCase(TestCase):
             hardware=self.hardware,
             hardware_node='node3',
             hardware_number=12347,
-            station_type='active',
+            station_type='person',
             station_profile=self.station_profile,
             features={
                 'type': 'Feature',
@@ -245,7 +245,7 @@ class FeaturesEndpointTestCase(TestCase):
             hardware=self.hardware,
             hardware_node='node_eva',
             hardware_number=12349,
-            station_type='active',
+            station_type='person',
             station_profile=self.station_profile,
             features={
                 'type': 'Feature',
@@ -350,8 +350,8 @@ class FeaturesEndpointTestCase(TestCase):
         self.assertIn('Near Other Campus', features_by_name)
 
     @patch.dict(os.environ, {'CAMPUS': 'Test Campus'})
-    def test_features_endpoint_infrastructure_not_on_eva(self):
-        """Infrastructure stations outside the geofence do not get on_eva"""
+    def test_features_endpoint_non_person_not_on_eva(self):
+        """Only person stations get on_eva; antenna and infrastructure do not"""
         Station.objects.create(
             name='Infra Station',
             short_name='INF',
@@ -373,6 +373,27 @@ class FeaturesEndpointTestCase(TestCase):
             },
             updated_at=timezone.now(),
         )
+        Station.objects.create(
+            name='Antenna Station',
+            short_name='ANT',
+            hardware=self.hardware,
+            hardware_node='node_antenna',
+            hardware_number=12352,
+            station_type='antenna',
+            station_profile=self.station_profile,
+            features={
+                'type': 'Feature',
+                'geometry': {
+                    'type': 'Point',
+                    'coordinates': [-106.1, 41.1],
+                },
+                'properties': {
+                    'name': 'Antenna Station',
+                    'node_type': 'antenna',
+                },
+            },
+            updated_at=timezone.now(),
+        )
 
         self.client.login(username='testuser', password='testpass123')
         response = self.client.get('/features.json')
@@ -385,6 +406,8 @@ class FeaturesEndpointTestCase(TestCase):
 
         self.assertEqual(features_by_name['Infra Station']['properties']['distance'], 1)
         self.assertFalse(features_by_name['Infra Station']['properties']['on_eva'])
+        self.assertEqual(features_by_name['Antenna Station']['properties']['distance'], 1)
+        self.assertFalse(features_by_name['Antenna Station']['properties']['on_eva'])
 
     @patch.dict(os.environ, {'CAMPUS': 'Test Campus'})
     def test_features_endpoint_station_without_coordinates(self):
