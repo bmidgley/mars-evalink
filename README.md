@@ -91,6 +91,21 @@ sudo systemctl start evalink
 sudo systemctl enable evalink
 ```
 
+## Deployment (gunicorn)
+
+After pulling code changes onto a server that runs gunicorn from `mars-evalink/evalink`, update the app and republish static files. nginx serves `/static` from `STATIC_ROOT` (e.g. `/home/evalink/static`); files only appear there after `collectstatic`.
+
+```bash
+cd mars-evalink
+git pull
+cd evalink
+./manage.py migrate
+./manage.py collectstatic --noinput
+sudo systemctl restart evalink
+```
+
+New assets under `evalink/evalink/static/` (for example station photos) will not be available at `/static/...` until `collectstatic` has run.
+
 ## Docker / ZimaOS
 
 A `docker-compose.yml` is provided for one-shot deployment on ZimaOS (or any
