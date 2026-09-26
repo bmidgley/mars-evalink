@@ -2108,7 +2108,13 @@
                     info.style.left = (event.pixel[0] + 10) + 'px';
                     info.style.top = event.pixel[1] + 'px';
                     info.style.visibility = 'visible';
-                    info.innerText = feature.get("name");
+                    const thumbnail = feature.get("thumbnail");
+                    if (thumbnail) {
+                        info.innerHTML = encodeXML(feature.get("name")) +
+                            '<br><img src="' + encodeXML(thumbnail) + '" alt="" style="max-width:120px;max-height:120px;margin-top:4px;display:block;">';
+                    } else {
+                        info.innerText = feature.get("name");
+                    }
                 } else if (feature.get("label")) {
                     info.style.left = (event.pixel[0] + 10) + 'px';
                     info.style.top = event.pixel[1] + 'px';
