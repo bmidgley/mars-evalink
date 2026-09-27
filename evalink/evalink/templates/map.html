@@ -330,6 +330,18 @@
             color: #004499;
         }
 
+        .station-admin-edit {
+            margin-left: 6px;
+            color: #666;
+            text-decoration: none;
+            font-size: 0.85em;
+            vertical-align: middle;
+        }
+
+        .station-admin-edit:hover {
+            color: #0066cc;
+        }
+
         .drawer-toggle {
             background: none;
             border: none;
@@ -863,6 +875,7 @@
         window.DEFAULT_CAMPUS_ID = {{ default_campus_id|default:"null" }};
         window.DEFAULT_MAP_LON = {{ default_longitude|default:"-110.7919148" }};
         window.DEFAULT_MAP_LAT = {{ default_latitude|default:"38.4065268" }};
+        window.isStaff = {% if user.is_staff %}true{% else %}false{% endif %};
         let clipboarding = false;
         navigator.permissions.query({ name: "clipboard-write" }).then((result) => {
             if (result.state === "granted" || result.state === "prompt") {
@@ -1449,7 +1462,12 @@
             const timeSliderContainer = document.getElementById('time-slider-container');
             const timeSlider = document.getElementById('time-slider');
             const closeButton = document.getElementById('time-slider-close')
-            document.getElementById('nameTimeSlider').innerHTML = `<a id="nameTimeSliderName" href="${url}">${name}</a>`;
+            const stationId = markerData[name].id;
+            let nameHtml = `<a id="nameTimeSliderName" href="${url}">${name}</a>`;
+            if (window.isStaff && stationId != null) {
+                nameHtml += ` <a href="/admin/evalink/station/${stationId}/change/" target="_blank" rel="noopener noreferrer" class="station-admin-edit" title="Edit in admin"><i class="bi bi-pencil"></i></a>`;
+            }
+            document.getElementById('nameTimeSlider').innerHTML = nameHtml;
             document.getElementById('batteryTimeSlider').innerHTML = battery_text(battery, temperature, time);
             document.getElementById('latestLink').innerHTML = `<a href="${base_url}">(see latest)</a>`;
 
