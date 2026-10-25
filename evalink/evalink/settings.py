@@ -30,10 +30,11 @@ def _csv_env(name, default=''):
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv(
-    'DJANGO_SECRET_KEY',
-    'django-insecure-t)=ssk9r_e_yxde^s2%+j4nz1ol&tk0hr7ge98qgc9%yc&5wxd',
+INSECURE_DEFAULT_SECRET_KEY = (
+    'django-insecure-t)=ssk9r_e_yxde^s2%+j4nz1ol&tk0hr7ge98qgc9%yc&5wxd'
 )
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', INSECURE_DEFAULT_SECRET_KEY)
+USING_DEFAULT_SECRET_KEY = SECRET_KEY == INSECURE_DEFAULT_SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DJANGO_DEBUG', '1') not in ('0', 'false', 'False', '')
@@ -78,6 +79,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'evalink.context_processors.security_warnings',
             ],
         },
     },

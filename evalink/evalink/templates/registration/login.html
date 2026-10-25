@@ -1,4 +1,10 @@
 <!-- templates/registration/login.html -->
+{% if using_default_secret_key %}
+<p style="color: #842029; background: #f8d7da; border: 1px solid #f5c2c7; padding: 0.75rem; border-radius: 4px;">
+  Warning: Django is using the insecure default SECRET_KEY.
+  Set <code>DJANGO_SECRET_KEY</code> in the environment for this deployment.
+</p>
+{% endif %}
 <h2>Log In</h2>
 <form method="post">
   {% csrf_token %}
