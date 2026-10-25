@@ -30,7 +30,7 @@ evalink uses MQTT as a bus between field hardware (Meshtastic mesh gateways, ESP
 +--------+                    |
                               |
          External publishers --+
-         (Meshtastic gateway, run_remoteid_feed, ask_position)
+         (Meshtastic gateway, run_remoteid_feed)
 ```
 
 The web container runs Gunicorn **and** the MQTT subscriber thread (`evalink/__init__.py` calls `mqtt.client.loop_start()`). Tests disable this via `MQTT_ENABLED = False` in `evalink/test_settings.py`.
@@ -44,9 +44,9 @@ The web container runs Gunicorn **and** the MQTT subscriber thread (`evalink/__i
 | `MQTT_USER` / `MQTT_PASSWORD` | Optional broker credentials (not used by Docker Mosquitto) |
 | `MQTT_TLS` | Non-empty enables TLS on the **client** side (Spectrum terminates TLS publicly) |
 | `MQTT_TOPIC` | Topic root, e.g. `msh/MarsSociety/MDRS` |
-| `MQTT_NODE_NUMBER` | Numeric Meshtastic node ID of the campus gateway; used as `from` on downlink chat and excluded from stale-node queries |
-| `MQTT_JSON_BRIDGE_SEG` | Bridge segment in uplink topics (default `2`; used by `ask_position.py`) |
-| `MQTT_JSON_CHANNEL` | Channel name in uplink topics (default `LongFast`; used by `ask_position.py`) |
+| `MQTT_NODE_NUMBER` | Numeric Meshtastic node ID of the campus gateway; used as `from` on downlink chat |
+| `MQTT_JSON_BRIDGE_SEG` | Bridge segment in uplink topics (default `2`) |
+| `MQTT_JSON_CHANNEL` | Channel name in uplink topics (default `LongFast`) |
 | `CAMPUS` | Campus name in the database; scopes mesh processing and RemoteID aircraft routing |
 
 Docker Mosquitto allows anonymous connections (`allow_anonymous true` in `mosquitto/config/mosquitto.conf`). Restrict host port binding and firewall rules so only trusted LAN clients can reach the broker.
@@ -180,49 +180,7 @@ sequenceDiagram
 
 ---
 
-## Flow 3: Stale position polling (`ask_position.py`)
-
-When mesh nodes stop reporting position while still in the field, an external cron job requests positions via the Meshtastic CLI. The gateway radio uplinks the remote position reply as JSON MQTT; Django persists it.
-
-```mermaid
-sequenceDiagram
-    participant Cron as Cron / operator
-    participant Script as ask_position.py
-    participant HTTP as evalink /stalenode
-    participant CLI as meshtastic CLI
-    participant Node as Target mesh node
-    participant GW as Gateway radio
-    participant Broker as Mosquitto
-    participant Django as Django subscriber
-    participant DB as PostgreSQL
-
-    Cron->>Script: Run periodically
-    Script->>HTTP: GET /stalenode?delay=1
-    HTTP-->>Script: stations[] with hardware_node, hardware_number
-    loop each stale station
-        Script->>CLI: meshtastic --request-position --dest !node
-        CLI->>Node: LoRa position request
-        Node-->>GW: POSITION_APP reply
-        GW->>Broker: PUBLISH {MQTT_TOPIC}/2/json/{channel}/{gateway}
-        Note right of GW: JSON type=position (from=remote)
-        Broker->>Django: DELIVER
-        Django->>DB: Same as normal position uplink
-    end
-```
-
-The `/stalenode` endpoint (no auth) returns MQTT-oriented metadata including `mqtt_downlink_topic` and `gateway_node_number`. `ask_position.py` only triggers the CLI request; persistence is via the gateway MQTT JSON uplink.
-
-Stale selection criteria:
-
-- Has a `last_position`
-- Last update older than `delay` minutes
-- Seen within the last 6 hours
-- Outside campus **inner** geofence, inside **outer** geofence (if configured)
-- Not infrastructure, ignore, or the gateway node
-
----
-
-## Flow 4: RemoteID drone feed
+## Flow 3: RemoteID drone feed
 
 An ESP32-S3 on a Pi or field laptop reads RemoteID serial JSON and publishes to the aircraft topic tree.
 
@@ -264,7 +222,7 @@ RemoteID routing uses the `CAMPUS` environment variable directly (not geofence).
 
 ---
 
-## Flow 5: ADS-B aircraft feed (external publisher)
+## Flow 4: ADS-B aircraft feed (external publisher)
 
 The same aircraft topic prefix supports dump1090/readsb-style ADS-B JSON from an external MQTT bridge (not shipped in this repo).
 
@@ -300,7 +258,6 @@ How MQTT data reaches the map UI:
 flowchart LR
     subgraph uplink [MQTT uplink sources]
         M[Meshtastic gateway]
-        AP[ask_position.py]
         RI[run_remoteid_feed.py]
         ADS[External ADS-B bridge]
     end
@@ -320,7 +277,6 @@ flowchart LR
     end
 
     M --> MQ
-    AP --> MQ
     RI --> MQ
     ADS --> MQ
     MQ --> SUB --> H
@@ -346,8 +302,6 @@ Mesh station markers and telemetry come from `/features.json`. Aircraft overlays
 | Message persistence | `evalink/evalink/handler.py` | `process_message`, `process_aircraft` |
 | Subscriber startup | `evalink/evalink/__init__.py` | `loop_start()` on import |
 | Chat downlink | `evalink/evalink/views.py` (`chat`) | Publish `sendtext` |
-| Stale node API | `evalink/evalink/views.py` (`stalenode`) | HTTP only; informs `ask_position.py` |
-| Position poll script | `ask_position.py` | Publish synthetic positions |
 | RemoteID script | `run_remoteid_feed.py` | Publish aircraft topics |
 | Broker config | `mosquitto/config/mosquitto.conf` | Auth, listener |
 | Compose stack | `docker-compose.yml` | `mqtt`, `web`, `db` services |

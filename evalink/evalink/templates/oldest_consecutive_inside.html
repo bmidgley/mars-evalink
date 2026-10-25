@@ -74,31 +74,6 @@
             background-color: #1976d2;
             color: white;
         }
-        .clear-button {
-            background-color: #d32f2f;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-size: 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 20px 0;
-            transition: background-color 0.3s;
-        }
-        .clear-button:hover {
-            background-color: #b71c1c;
-        }
-        .clear-button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        .form-container {
-            margin: 20px 0;
-            padding: 20px;
-            background-color: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 4px;
-        }
         .success-message {
             color: #2e7d32;
             background-color: #e8f5e9;
@@ -131,16 +106,6 @@
                 </div>
 
                 {% if devices %}
-                    <div class="form-container">
-                        <form id="clearForm" method="POST" action="{% url 'clear_redundant_logs' %}">
-                            {% csrf_token %}
-                            <input type="hidden" name="date" value="{{ date }}">
-                            <button type="submit" class="clear-button" id="clearButton">
-                                Clear redundant logs for this date
-                            </button>
-                        </form>
-                    </div>
-
                     <table>
                         <thead>
                             <tr>
@@ -166,18 +131,6 @@
         {% endif %}
     </div>
 
-    <script>
-        const clearForm = document.getElementById('clearForm');
-        if (clearForm) {
-            clearForm.addEventListener('submit', function(e) {
-                const button = document.getElementById('clearButton');
-                if (button) {
-                    button.disabled = true;
-                    button.textContent = 'Processing...';
-                }
-            });
-        }
-    </script>
 </body>
 </html>
 

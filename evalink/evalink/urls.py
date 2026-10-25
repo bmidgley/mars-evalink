@@ -35,9 +35,7 @@ urlpatterns = [
     path('delete-planner-point', views.delete_planner_point, name='delete_planner_point'),
     path('eva-statistics/', views.eva_statistics, name='eva_statistics'),
     path('oldest-consecutive-inside', views.oldest_consecutive_inside, name='oldest_consecutive_inside'),
-    path('clear-redundant-logs', views.clear_redundant_logs, name='clear_redundant_logs'),
     path('aircraft.json', views.aircraft, name='aircraft'),
     path('aprs.json', views.aprs, name='aprs'),
-    path('stalenode', views.stalenode, name='stalenode'),
     path('profile/campus', views.set_profile_campus, name='set_profile_campus'),
 ]
